@@ -1,0 +1,3 @@
+app/lib/** -text
+*.onnx binary
+*.wasm binary

@@ -1,0 +1,14 @@
+# data dan artefak pelatihan (lisensi nonkomersial; tidak untuk repo)
+/data/
+/models/
+train_*.log
+webtest/*.jpg
+webtest_out/
+app/testimg/
+tmp_*/
+__pycache__/
+*.pyc
+.claude/
+.vercel/
+node_modules/
+/contoh/

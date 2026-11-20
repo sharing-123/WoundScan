@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0e16">
+<title>WoundScan</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#22d3ee" stroke-width="2"/><path d="M9 17c3-7 11-9 14-3-3-1-5 1-6 4s-4 4-8-1z" fill="#22d3ee" opacity=".9"/></svg><b>WoundScan</b><span class="tag">lokal &middot; offline</span></div>
+  <div class="status" id="status"><i class="dot"></i><span>memuat model…</span></div>
+  <div class="actions">
+    <label class="btn primary" for="file">Foto luka</label>
+    <input id="file" type="file" accept="image/*" capture="environment" hidden>
+    <button class="btn" id="btnExport" disabled>Ekspor PNG</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="stage" id="stage">
+    <div class="viewport" id="viewport">
+      <canvas id="cv"></canvas>
+      <div class="empty" id="empty">
+        <svg viewBox="0 0 64 64" width="64" height="64"><circle cx="32" cy="32" r="26" fill="none" stroke="#22d3ee" stroke-width="2" stroke-dasharray="4 5"/><path d="M18 34c6-14 22-18 28-6-6-2-10 2-12 8s-8 8-16-2z" fill="#22d3ee" opacity=".85"/></svg>
+        <h2>Ambil atau unggah satu foto luka</h2>
+        <p>Segmentasi, ukuran, %TBSA, jaringan, dan rekomendasi muncul otomatis. Foto tidak dikirim ke mana pun.</p>
+        <p class="hint">Untuk ukuran akurat, sertakan benda berukuran diketahui (penggaris, kartu, koin) atau isi jarak kamera.</p>
+      </div>
+      <div class="hud" id="hud" hidden></div>
+      <div class="busy" id="busy" hidden><i class="spin"></i><span id="busyMsg">Menganalisis…</span></div>
+    </div>
+    <div class="tools" id="tools">
+      <div class="seg" role="group" aria-label="Alat">
+        <button class="tool on" data-tool="pan" title="Geser dan zoom">Geser</button>
+        <button class="tool" data-tool="tap" title="Ketuk di dalam luka untuk segmentasi otomatis">Ketuk luka</button>
+        <button class="tool" data-tool="add" title="Kuas tambah">Tambah</button>
+        <button class="tool" data-tool="erase" title="Kuas hapus">Hapus</button>
+        <button class="tool" data-tool="calib" title="Tandai dua titik berjarak diketahui">Skala</button>
+        <button class="tool" data-tool="palm" title="Gambar poligon telapak tangan pasien sebagai acuan">Telapak</button>
+      </div>
+      <div class="sliders">
+        <label>Ambang <input type="range" id="thr" min="20" max="80" value="50"><output id="thrv">0,50</output></label>
+        <label class="brushrow">Kuas <input type="range" id="brush" min="3" max="60" value="16"></label>
+        <button class="btn sm" id="btnUndo">Urung</button>
+        <button class="btn sm" id="btnAuto">Segmentasi ulang</button>
+      </div>
+      <div class="layers" id="layers">
+        <label><input type="checkbox" data-l="contour" checked> kontur</label>
+        <label><input type="checkbox" data-l="tissue" checked> jaringan</label>
+        <label><input type="checkbox" data-l="dims" checked> dimensi</label>
+        <label><input type="checkbox" data-l="axes"> kepala–kaki</label>
+        <label><input type="checkbox" data-l="feret"> Feret</label>
+        <label><input type="checkbox" data-l="margins"> margin</label>
+        <label><input type="checkbox" data-l="grid"> grid cm</label>
+        <label><input type="checkbox" data-l="scale" checked> skala</label>
+        <label><input type="checkbox" data-l="centroid"> pusat</label>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <nav class="tabs" id="tabs">
+      <button class="on" data-tab="ukur">Ukur</button>
+      <button data-tab="jaringan">Jaringan</button>
+      <button data-tab="klinis">Klinis</button>
+      <button data-tab="bedah">Bedah</button>
+      <button data-tab="rekom">Rekomendasi</button>
+      <button data-tab="riwayat">Riwayat</button>
+    </nav>
+
+    <div class="pane on" id="p-ukur">
+      <div class="calibcard" id="calibCard"></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="note" id="uncert"></div>
+    </div>
+
+    <div class="pane" id="p-jaringan"><div id="tissuePane" class="muted">Belum ada segmentasi.</div></div>
+
+    <div class="pane" id="p-klinis">
+      <form id="clinForm" class="form" autocomplete="off">
+        <fieldset><legend>Pasien</legend>
+          <div class="g4">
+            <label>Usia (th)<input type="number" id="f-age" min="0" max="120" step="0.1"></label>
+            <label>TB (cm)<input type="number" id="f-h" min="30" max="230" step="0.5"></label>
+            <label>BB (kg)<input type="number" id="f-w" min="2" max="300" step="0.1"></label>
+            <label>BSA (m²)<output id="f-bsa">–</output></label>
+          </div>
+        </fieldset>
+        <fieldset><legend>Luka</legend>
+          <label>Jenis<select id="f-type"></select></label>
+          <label>Regio<select id="f-region"></select></label>
+          <div class="g2">
+            <label>Kedalaman<select id="f-depth"><option value="partial">Parsial (dermis)</option><option value="full" selected>Tebal penuh / lebih dalam</option></select></label>
+            <label>Usia luka (hari)<input type="number" id="f-age-d" min="0" step="1"></label>
+          </div>
+          <div class="checks" id="f-exposed"></div>
+          <label>Kelengkungan permukaan (lingkar luka, °)<input type="range" id="f-curve" min="0" max="180" value="0"><output id="f-curvev">0° (datar)</output></label>
+        </fieldset>
+        <fieldset><legend>Infeksi dan keadaan</legend>
+          <div class="checks" id="f-flags"></div>
+        </fieldset>
+        <fieldset id="fs-burn" hidden><legend>Luka bakar</legend>
+          <div class="g2">
+            <label>Mekanisme<select id="f-mech"><option value="termal">Termal</option><option value="listrik">Listrik</option><option value="kimia">Kimia</option></select></label>
+            <label>Jam sejak kejadian<input type="number" id="f-hours" min="0" step="0.5" value="0"></label>
+          </div>
+          <div class="checks"><label><input type="checkbox" id="f-inhal"> inhalasi / jelaga / suara serak</label><label><input type="checkbox" id="f-circ"> sirkumferensial</label><label><input type="checkbox" id="f-special"> wajah, tangan, kaki, genital, sendi besar</label></div>
+          <div class="muted sm">Luas dari foto ditambahkan ke keranjang. Gunakan beberapa foto untuk %TBSA total.</div>
+        </fieldset>
+        <fieldset><legend>Tetanus</legend>
+          <div class="g2">
+            <label>Dosis imunisasi<select id="f-tet"><option value="0">Tidak tahu / &lt; 3 dosis</option><option value="3">≥ 3 dosis</option></select></label>
+            <label>Tahun sejak dosis terakhir<input type="number" id="f-tety" min="0" step="1" value="0"></label>
+          </div>
+        </fieldset>
+      </form>
+    </div>
+
+    <div class="pane" id="p-bedah">
+      <div class="seg vms" role="group" aria-label="Tampilan">
+        <button class="vm on" data-vm="anot">Anotasi</button><button class="vm" data-vm="mark">Marking bedah</button><button class="vm" data-vm="sim">Simulasi hasil</button>
+      </div>
+      <div id="surgBusy" class="muted sm"></div>
+      <div id="surgInfo"><div class="muted">Segmentasi luka dan kalibrasi skala dahulu.</div></div>
+      <details id="surgOpts" class="card">
+        <summary>Parameter marking</summary>
+        <div class="form" style="margin-top:10px">
+          <label>Teknik<select id="s-tech"></select></label>
+          <div class="g2">
+            <label>Margin eksisi (mm)<input type="number" id="s-margin" min="0" step="0.5" value="0"></label>
+            <label>Jarak jahitan (mm, 0 = otomatis)<input type="number" id="s-sp" min="0" step="0.5" value="0"></label>
+            <label>Rasio panjang:lebar elips<select id="s-ratio"><option value="3">3 : 1</option><option value="4" selected>4 : 1</option></select></label>
+            <label>Laksitas kulit (mm, opsional)<input type="number" id="s-lax" min="0" step="1" value="0"></label>
+            <label>Panjang flap : lebar<select id="s-k"><option>2</option><option selected>3</option><option>4</option></select></label>
+            <label>Sudut Z-plasti (°)<select id="s-z"><option>30</option><option>45</option><option selected>60</option><option>75</option><option>90</option></select></label>
+            <label>Rasio mesh STSG<select id="s-mesh"><option>1</option><option selected>1.5</option><option>2</option><option>3</option></select></label>
+            <label>Sepertiga tungkai bawah<select id="s-third"><option value="">tidak ditentukan</option><option value="prox">proksimal</option><option value="mid">tengah</option><option value="dist">distal</option></select></label>
+            <label>Sisi luka<select id="s-side"><option value="kanan">Kanan</option><option value="kiri">Kiri</option><option value="tengah">Tengah</option></select></label>
+            <label>Simulasi<select id="s-stage"><option value="hari0">Hari 0 (jahitan)</option><option value="matur">Parut matur (6–12 bulan)</option></select></label>
+          </div>
+          <label>Arah garis kulit / RSTL (sumbu penutupan)<input type="range" id="s-theta" min="-90" max="90" value="0"><output id="s-thetav">otomatis</output></label>
+          <div class="row" style="display:flex;gap:8px"><button type="button" class="btn sm" id="s-theta-auto">Arah otomatis</button><button type="button" class="btn sm" id="s-flip">Balik arah flap</button></div>
+        </div>
+      </details>
+      <div id="surgDonor"></div>
+      <div id="surgNums"></div>
+      <button class="btn primary" id="btnSheet" style="width:100%">Ekspor lembar rencana operasi (PNG)</button>
+    </div>
+
+    <div class="pane" id="p-rekom"><div id="recPane" class="muted">Isi tab Klinis dan segmentasi luka untuk melihat rekomendasi.</div></div>
+
+    <div class="pane" id="p-riwayat">
+      <div class="hist">
+        <label>ID pasien<input id="h-id" placeholder="mis. RM 12-34-56"></label>
+        <div class="row"><button class="btn primary" id="btnSave">Simpan kunjungan</button><button class="btn" id="btnClear">Kosongkan keranjang TBSA</button></div>
+        <div id="histChart"></div>
+        <div id="histList"></div>
+        <div id="basket"></div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<dialog id="dlg"><form method="dialog"><h3 id="dlgT"></h3><div id="dlgB"></div><menu><button class="btn" value="cancel">Batal</button><button class="btn primary" value="ok" id="dlgOk">OK</button></menu></form></dialog>
+
+<script src="lib/ort.min.js"></script>
+<script src="js/geom.js"></script>
+<script src="js/knowledge.js"></script>
+<script src="js/seg.js"></script>
+<script src="js/tissue.js"></script>
+<script src="js/render.js"></script>
+<script src="js/planner.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/donor.js"></script>
+<script src="js/bodymap.js"></script>
+<script src="js/surg-ui.js"></script>
+<script src="js/clinical.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
