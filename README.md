@@ -29,6 +29,11 @@ Conclusion. Calibrated single photograph measurement and structured reconstructi
 
 Keywords. Wound segmentation, Medical image analysis, Reconstructive surgery, Deep learning
 
+<p align="center">
+  <img src="docs/figures/fig1_application_marking_view.jpg" width="100%" alt="Figure 1. Browser interface in marking view for a sacral pressure injury. The left panel shows the calibrated segmentation, the dimensions, and the V to Y flap marking, and the right panel lists the ranked flap options with their size limits.">
+</p>
+<p align="center"><sub><em>Figure 1. Browser interface in marking view for a sacral pressure injury. The left panel shows the calibrated segmentation, the dimensions, and the V to Y flap marking, and the right panel lists the ranked flap options with their size limits.</em></sub></p>
+
 ## Methods
 
 The application is a static website. All computation happens in the browser through onnxruntime-web, so photographs of patients never leave the device. The segmentation network is a U-Net whose encoder is a MobileNetV2 pretrained on ImageNet. It receives a 256 by 256 image, carries a full resolution skip connection from the input to sharpen boundaries, and is exported to ONNX at about ten megabytes. At inference the probability map is averaged over the original image and its horizontal and vertical flips, then resampled to the working resolution of the photograph, which is capped at 1400 pixels on the long side.
@@ -39,6 +44,21 @@ A photograph carries no absolute scale, so the program does not report centimetr
 
 The planning module works from the calibrated mask. For closure it solves, by bisection, the smallest fusiform ellipse with a chosen length to width ratio and a 30 degree apex angle that contains the whole defect, and it places an odd number of interrupted sutures with equal spacing and numbers them in the order of the rule of halves. Flaps, Z plasty with the usual theoretical gains of 25, 50, 75, 100, and 120 percent for angles of 30, 45, 60, 75, and 90 degrees, and skin graft templates are drawn as geometric markings. A reconstructive decision step then chooses between primary closure, graft, and flap from the state of the wound bed, exposed structures, osteomyelitis, prior irradiation, anatomical region, and size. For grafts it compares the donor area needed with the area available, which is estimated from the body surface area, Lund and Browder regional fractions, and a usable fraction for each donor. For flaps it ranks 22 local, regional, and free candidates by region, defect size, and patient factors such as diabetes, peripheral arterial disease, and smoking. The donor map draws a front and back mannequin at the patient's height with Drillis and Contini segment proportions, the wound, and the numbered donor sites with their dimensions. A simulated postoperative image is produced by filling the planned region from surrounding skin and drawing the closure line, and it is only an illustration.
 
+<p align="center">
+  <img src="docs/figures/fig2_skin_graft_and_donor_plan.jpg" width="100%" alt="Figure 2. Planning sheet for a large dehiscence wound closed with a split thickness skin graft. The sheet combines the annotated photograph, the graft template with mesh pattern, a simulated result, the quantitative table, and the ranked donor sites on a mannequin drawn to the height of the patient. The scale is assumed for illustration.">
+</p>
+<p align="center"><sub><em>Figure 2. Planning sheet for a large dehiscence wound closed with a split thickness skin graft. The sheet combines the annotated photograph, the graft template with mesh pattern, a simulated result, the quantitative table, and the ranked donor sites on a mannequin drawn to the height of the patient. The scale is assumed for illustration.</em></sub></p>
+
+<p align="center">
+  <img src="docs/figures/fig3_vy_flap_plan.jpg" width="100%" alt="Figure 3. Planning sheet for a V to Y advancement flap on a sacral pressure injury, showing the flap base, the incision lines, the direction of advancement, and the estimated number of sutures.">
+</p>
+<p align="center"><sub><em>Figure 3. Planning sheet for a V to Y advancement flap on a sacral pressure injury, showing the flap base, the incision lines, the direction of advancement, and the estimated number of sutures.</em></sub></p>
+
+<p align="center">
+  <img src="docs/figures/fig4_free_flap_and_donor_map_plan.jpg" width="100%" alt="Figure 4. Planning sheet for a wide leg defect with exposed bone. The decision step selects a flap, the ranked list places a gastrocnemius muscle flap first for the proximal third of the leg, and a free anterolateral thigh flap from the opposite side appears among the later options.">
+</p>
+<p align="center"><sub><em>Figure 4. Planning sheet for a wide leg defect with exposed bone. The decision step selects a flap, the ranked list places a gastrocnemius muscle flap first for the proximal third of the leg, and a free anterolateral thigh flap from the opposite side appears among the later options.</em></sub></p>
+
 ## Validation and limitations
 
 On the 200 foot ulcer validation images the final model reached a Dice coefficient of 0.827 and an intersection over union of 0.744, with a median relative area error of 11.5 percent. The first round alone gave 0.803. Because these images also chose the best epoch, the figures are somewhat optimistic. On 160 Medetec images that the model had never seen, the Dice coefficient was 0.793 and the median area error was 23.9 percent. The geometry code was checked against shapes with known formulas. Areas agreed within 0.07 percent, perimeters of smooth shapes within 0.2 percent, and the perimeter of a rectangle with sharp corners within 0.93 percent. An automated stress test built 484 surgical plans, 30 planning sheets, and 146 random clinical combinations without a failure.
@@ -46,6 +66,11 @@ On the 200 foot ulcer validation images the final model reached a Dice coefficie
 We also tested three ideas that seemed likely to help and did not. Running the network again on a crop around the first detection lowered the Dice coefficient from 0.859 to 0.794 on 95 validation images. Refining the mask with MobileSAM and a box prompt was accepted by our consistency rule for only 4 of the 95 images and did not improve the score. Averaging predictions at 256, 320, and 384 pixels changed the Dice coefficient from 0.8606 to 0.8616, which does not justify the extra computation, and an input of 512 pixels failed at 0.668 because it lies far from the training scale.
 
 A qualitative test used 31 photographs from Wikimedia Commons that cover burns, bites, abrasions, lacerations, ulcers, pressure injuries, and dehiscence. Segmentation was reliable for dehiscence, diabetic foot ulcers, large pressure injuries including black eschar, linear lacerations, and blistered burns. It failed for small puncture wounds, thin diffuse abrasions, and an ulcerating carcinoma, and it produced false positives on photographs that contained no wound. The training data are dominated by chronic wounds, and there is no public collection with burn depth labels, so acute wounds and burns remain the weakest area. A brush and a tap tool allow the user to correct the mask.
+
+<p align="center">
+  <img src="docs/figures/fig5_segmentation_examples.jpg" width="100%" alt="Figure 5. Automatic segmentation on public photographs that were not used for training. The cyan outline marks the predicted wound area.">
+</p>
+<p align="center"><sub><em>Figure 5. Automatic segmentation on public photographs that were not used for training. The cyan outline marks the predicted wound area.</em></sub></p>
 
 The clinical content, which covers dosing, thresholds, closure limits, flap size ranges, and donor dimensions, was written from general surgical and wound care literature and has not been checked line by line against the source guidelines. Skin laxity, perforator anatomy, vascular status, and the direction of relaxed skin tension lines cannot be measured from a two dimensional photograph, so every marking is a proposal that the surgeon must confirm on the patient. Malignancy cannot be decided from a photograph, and the program only raises suspicion and suggests biopsy. WoundScan is a research prototype and not a medical device.
 
@@ -69,7 +94,7 @@ Persistent identifiers for the protocol and the archived release will be added a
 
 ## Data and licensing
 
-The released weights were trained on WoundSeg, which is licensed CC BY NC 4.0, and on the Foot Ulcer Segmentation Challenge images, which carry no written licence. The weights should therefore be treated as research and non commercial material, and clinical or commercial use needs permission from the dataset owners or retraining on local data. The burn dataset EBIS is available only on academic request and is not included. Wikimedia Commons photographs used for the qualitative test are not redistributed, and their sources are listed in webtest/sources.tsv. The repository contains no patient data. A software licence has not yet been attached.
+The released weights were trained on WoundSeg, which is licensed CC BY NC 4.0, and on the Foot Ulcer Segmentation Challenge images, which carry no written licence. The weights should therefore be treated as research and non commercial material, and clinical or commercial use needs permission from the dataset owners or retraining on local data. The burn dataset EBIS is available only on academic request and is not included. Wikimedia Commons photographs used for the qualitative test are not redistributed, and their sources are listed in webtest/sources.tsv. Photographs shown in the figures come from Wikimedia Commons and are credited in docs/figures/CREDITS.md. The repository contains no patient data. A software licence has not yet been attached.
 
 ## Citation
 
