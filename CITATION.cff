@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: WoundScan, a bioinformatics and deep learning framework for calibrated wound segmentation and reconstructive surgical planning
+type: software
+authors:
+  - family-names: Rafi
+    given-names: Muhammad Allam
+    affiliation: Faculty of Medicine, Universitas Indonesia
+date-released: 2026-11-20
+repository-code: https://github.com/sharing-123/WoundScan
+keywords:
+  - wound segmentation
+  - medical image analysis
+  - reconstructive surgery
+  - deep learning
