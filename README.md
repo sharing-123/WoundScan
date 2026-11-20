@@ -13,7 +13,7 @@
 
 <p align="center"><em>A bioinformatics and deep learning framework for calibrated wound segmentation, quantitative measurement, and reconstructive surgical planning in emergency and outpatient care</em></p>
 
-<p align="center">Muhammad Allam Rafi<br>Faculty of Medicine, Universitas Indonesia, Jakarta, Indonesia</p>
+<p align="center">Muhammad Allam Rafi<sup>1</sup>, Cindy Rizky Afrilia<sup>2</sup><br><sup>1</sup>Faculty of Medicine, Universitas Indonesia, Jakarta, Indonesia<br><sup>2</sup>Faculty of Medicine, Universitas Kristen Krida Wacana, Jakarta, Indonesia</p>
 
 <p align="center">OSF DOI 10.17605/OSF.IO/XXXXX<br>Zenodo DOI 10.5281/zenodo.XXXXXXX</p>
 
@@ -75,7 +75,7 @@ The released weights were trained on WoundSeg, which is licensed CC BY NC 4.0, a
 
 ```bibtex
 @software{rafi_woundscan,
-  author  = {Rafi, Muhammad Allam},
+  author  = {Rafi, Muhammad Allam and Afrilia, Cindy Rizky},
   title   = {WoundScan, a bioinformatics and deep learning framework for calibrated wound segmentation and reconstructive surgical planning},
   year    = {2026},
   doi     = {10.5281/zenodo.XXXXXXX},

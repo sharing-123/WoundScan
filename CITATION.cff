@@ -6,6 +6,9 @@ authors:
   - family-names: Rafi
     given-names: Muhammad Allam
     affiliation: Faculty of Medicine, Universitas Indonesia
+  - family-names: Afrilia
+    given-names: Cindy Rizky
+    affiliation: Faculty of Medicine, Universitas Kristen Krida Wacana
 date-released: 2026-11-20
 repository-code: https://github.com/sharing-123/WoundScan
 keywords:
