@@ -55,8 +55,8 @@
 <g font-family="Segoe UI,Inter,Roboto,Helvetica,Arial,sans-serif">
 <text x="72" y="104" font-size="13" letter-spacing="5" fill="#67e8f9" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.8s" begin="0.2s" fill="freeze"/>MEDICAL AI AND BIOINFORMATICS</text>
 <text x="68" y="196" font-size="88" font-weight="800" fill="url(#title)" opacity="0" letter-spacing="-2">WoundScan<animate attributeName="opacity" values="0;1" dur="1s" begin="0.35s" fill="freeze"/><animateTransform attributeName="transform" type="translate" values="-24 0;0 0" dur="1s" begin="0.35s" fill="freeze"/></text>
-<text x="72" y="244" font-size="21" fill="#dbeafe" opacity="0"><animate attributeName="opacity" values="0;1" dur="1s" begin="0.7s" fill="freeze"/>A bioinformatics framework for calibrated wound segmentation,</text>
-<text x="72" y="274" font-size="21" fill="#dbeafe" opacity="0"><animate attributeName="opacity" values="0;1" dur="1s" begin="0.9s" fill="freeze"/>quantitative measurement, and reconstructive surgical planning</text>
+<text x="72" y="244" font-size="21" fill="#dbeafe" opacity="0"><animate attributeName="opacity" values="0;1" dur="1s" begin="0.7s" fill="freeze"/>Calibrated wound segmentation and reconstructive surgical planning</text>
+<text x="72" y="274" font-size="21" fill="#dbeafe" opacity="0"><animate attributeName="opacity" values="0;1" dur="1s" begin="0.9s" fill="freeze"/>from clinical photographs. A bioinformatic and deep learning study</text>
 </g>
 <g opacity="0"><animate attributeName="opacity" values="0;1" dur="0.8s" begin="1.2s" fill="freeze"/>
 <rect x="72" y="318" width="118" height="30" rx="15" fill="#0b1b30" stroke="#22d3ee" stroke-opacity=".6"/>

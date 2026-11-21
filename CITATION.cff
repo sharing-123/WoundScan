@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: If you use this software, please cite it as below.
-title: "Measuring Wounds in Millimetres and Planning Their Repair from One Photograph: A Bioinformatic and Deep Learning Study"
+title: "Calibrated Wound Segmentation and Reconstructive Surgical Planning from Clinical Photographs: A Bioinformatic and Deep Learning Study"
 type: software
 authors:
   - family-names: Rafi

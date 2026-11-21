@@ -11,7 +11,7 @@
 
 # WoundScan
 
-<p align="center"><em>Measuring Wounds in Millimetres and Planning Their Repair from One Photograph: A Bioinformatic and Deep Learning Study</em></p>
+<p align="center"><em>Calibrated Wound Segmentation and Reconstructive Surgical Planning from Clinical Photographs: A Bioinformatic and Deep Learning Study</em></p>
 
 <p align="center">Muhammad Allam Rafi<sup>1</sup>, Cindy Rizky Afrilia<sup>2</sup><br><sup>1</sup>Faculty of Medicine, Universitas Indonesia, Jakarta, Indonesia<br><sup>2</sup>Faculty of Medicine, Universitas Kristen Krida Wacana, Jakarta, Indonesia</p>
 
@@ -101,7 +101,7 @@ The released weights were trained on WoundSeg, which is licensed CC BY NC 4.0, a
 ```bibtex
 @software{rafi_woundscan,
   author  = {Rafi, Muhammad Allam and Afrilia, Cindy Rizky},
-  title   = {Measuring Wounds in Millimetres and Planning Their Repair from One Photograph: A Bioinformatic and Deep Learning Study},
+  title   = {Calibrated Wound Segmentation and Reconstructive Surgical Planning from Clinical Photographs: A Bioinformatic and Deep Learning Study},
   year    = {2026},
   doi     = {10.5281/zenodo.XXXXXXX},
   note    = {OSF 10.17605/OSF.IO/XXXXX}
