@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: If you use this software, please cite it as below.
-title: WoundScan, a bioinformatics and deep learning framework for calibrated wound segmentation and reconstructive surgical planning
+title: "Measuring Wounds in Millimetres and Planning Their Repair from One Photograph: A Bioinformatic and Deep Learning Study"
 type: software
 authors:
   - family-names: Rafi
