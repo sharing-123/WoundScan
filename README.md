@@ -82,7 +82,7 @@ The static site lives in the app folder. To run it locally, start the bundled se
 python serve.py
 ```
 
-On Windows the file jalankan.bat does the same. To publish the site, import the repository in Vercel with the framework preset set to Other and an empty build command, because vercel.json already points to the app folder. Training and evaluation scripts are in the train folder and need the public datasets placed in a data folder. The three stages run in sequence.
+On Windows the file run_windows.bat does the same. To publish the site, import the repository in Vercel with the framework preset set to Other and an empty build command, because vercel.json already points to the app folder. Training and evaluation scripts are in the train folder and need the public datasets placed in a data folder. The three stages run in sequence.
 
 ```bash
 python train/train.py round1 16
