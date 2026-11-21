@@ -1,0 +1,11 @@
+include LICENSE
+include docs/PYPI_README.md
+include tests/*.py
+prune app
+prune data
+prune models
+prune webtest
+prune train
+prune docs/figures
+prune contoh
+global-exclude *.onnx *.pt *.jpg *.png *.wasm *.log

@@ -129,3 +129,7 @@ Lund CC, Browder NC. The estimation of areas of burns. Surgery, Gynecology and O
 Drillis R, Contini R. Body segment parameters. Office of Vocational Rehabilitation, New York University. 1966.
 
 Janis JE, Kwon RK, Attinger CE. The new reconstructive ladder, modifications to the traditional model. Plastic and Reconstructive Surgery. 2011. 127.
+
+## Python package
+
+See the [Python installation and integration guide](docs/PYPI_README.md) for the importable API, examples, tests and development instructions.

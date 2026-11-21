@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "woundscan"
+version = "0.1.0"
+description = "Composable calibrated wound-mask measurement and optional ONNX segmentation for research"
+readme = "docs/PYPI_README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Muhammad Allam Rafi"}, {name = "Cindy Rizky Afrilia"}]
+dependencies = ["numpy>=1.23"]
+keywords = ["wound", "segmentation", "medical-imaging", "calibration", "research"]
+classifiers = ["Development Status :: 3 - Alpha", "Programming Language :: Python :: 3", "Operating System :: OS Independent", "Topic :: Scientific/Engineering :: Image Processing", "Intended Audience :: Science/Research"]
+
+[project.optional-dependencies]
+inference = ["onnxruntime>=1.17", "opencv-python-headless>=4.8"]
+test = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://github.com/sharing-123/WoundScan"
+Repository = "https://github.com/sharing-123/WoundScan"
+Issues = "https://github.com/sharing-123/WoundScan/issues"
+Documentation = "https://github.com/sharing-123/WoundScan/blob/main/docs/PYPI_README.md"
+"OSF registration" = "https://doi.org/10.17605/OSF.IO/KV3SP"
+"Zenodo archive" = "https://doi.org/10.5281/zenodo.24412818"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
