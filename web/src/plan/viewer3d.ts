@@ -12,7 +12,7 @@ import { edt, gauss, type P2 } from './geom';
 import { marking } from './draw';
 import { kFor } from './plate';
 import { lang } from '../i18n';
-import { buildCutaway, layerLegend, stageAt } from './cutaway';
+import { buildCutaway, layerLegend, stageAt, kindOf } from './cutaway';
 import { pick } from '../clinic/kb';
 
 const T = (en: string, id: string) => (lang() === 'id' ? id : en);
@@ -299,6 +299,38 @@ export function mountViewer(host: HTMLElement, st: Stage, cs: Case): Viewer {
   const gp = cs.plan.pieces.find((q) => q.role === 'graft');
   if (gp) for (let i = 0; i < gp.poly.length; i += Math.max(1, Math.floor(gp.poly.length / 16))) { const a = gp.poly[i]; const c = cs.geo.centroid; const dx = c[0] - a[0], dy = c[1] - a[1], L = Math.hypot(dx, dy) || 1; addStitch(a, [a[0] + (dx / L) * 5, a[1] + (dy / L) * 5]); }
 
+  /* ---- dressings that belong to the stage: foam under suction, bolster, gauze ---- */
+  const kindS = kindOf(cs);
+  const dressPoly = (cs.geo.marginPoly(3) || cs.geo.poly).map((q) => pxToWorld(q, W, H, Hu));
+  const dressG = new THREE.Group(); dressG.visible = false; sheet.add(dressG);
+  const foamTex = (() => {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 128; const g = c.getContext('2d')!;
+    const dark = kindS === 'debride';
+    g.fillStyle = dark ? '#26282d' : kindS === 'graft' ? '#8fb0c4' : '#efeae0'; g.fillRect(0, 0, 128, 128);
+    const r = rng(21);
+    for (let i = 0; i < 260; i++) { g.beginPath(); g.fillStyle = dark ? `rgba(${70 + r() * 40 | 0},${72 + r() * 40 | 0},${80 + r() * 40 | 0},.55)` : `rgba(255,255,255,.35)`; g.arc(r() * 128, r() * 128, 1.5 + r() * 4, 0, 6.3); g.fill(); g.beginPath(); g.fillStyle = 'rgba(0,0,0,.25)'; g.arc(r() * 128, r() * 128, 1 + r() * 2.5, 0, 6.3); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const thick = kindS === 'debride' || kindS === 'graft' ? 0.16 : 0.035;
+  let dressMesh: THREE.Mesh | null = null, filmMesh: THREE.Mesh | null = null, tubeMesh: THREE.Mesh | null = null;
+  try {
+    const dg = new THREE.ExtrudeGeometry(new THREE.Shape(dressPoly), { depth: thick, bevelEnabled: true, bevelSize: 0.012, bevelThickness: 0.012, bevelSegments: 2, curveSegments: 8 });
+    dressMesh = new THREE.Mesh(dg, new THREE.MeshStandardMaterial({ map: foamTex, roughness: 1, bumpMap: foamTex, bumpScale: 1.2 }));
+    dressMesh.castShadow = true; dressG.add(dressMesh);
+    if (kindS === 'debride' || kindS === 'graft') {
+      const fg = new THREE.ShapeGeometry(new THREE.Shape(dressPoly.map((q) => q.clone().sub(new THREE.Vector2(cs.geo.centroid[0] / W * WU - WU / 2, -(cs.geo.centroid[1] / H * Hu - Hu / 2))).multiplyScalar(1.28).add(new THREE.Vector2(cs.geo.centroid[0] / W * WU - WU / 2, -(cs.geo.centroid[1] / H * Hu - Hu / 2))))));
+      filmMesh = new THREE.Mesh(fg, new THREE.MeshPhysicalMaterial({ color: '#cfe8ff', transparent: true, opacity: 0.3, roughness: 0.05, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false }));
+      filmMesh.position.z = thick + 0.03; dressG.add(filmMesh);
+      if (kindS === 'debride') {
+        let rx = -1e9, ry = 0; dressPoly.forEach((q) => { if (q.x > rx) { rx = q.x; ry = q.y; } });
+        const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(rx, ry, thick + 0.03), new THREE.Vector3(rx + 0.25, ry, thick + 0.09), new THREE.Vector3(WU / 2 + 0.2, ry + 0.1, 0.12), new THREE.Vector3(WU / 2 + 0.9, ry + 0.1, -0.1)]);
+        tubeMesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.035, 8, false), new THREE.MeshStandardMaterial({ color: '#e8eef2', roughness: 0.35 }));
+        dressG.add(tubeMesh);
+      }
+    }
+  } catch { /* a degenerate outline simply has no dressing */ }
+  void filmMesh; void tubeMesh;
+
   /* ---- measurement lines ---- */
   const s = cs.geo.shape, rect = s.rect;
   const meas: { a: THREE.Vector3; b: THREE.Vector3; label: HTMLElement; line: THREE.Line }[] = [];
@@ -384,6 +416,11 @@ export function mountViewer(host: HTMLElement, st: Stage, cs: Case): Viewer {
     });
     const st2 = seg(t, sk[0], sk[1]);
     stitches.forEach((m, i) => { const k = ease(st2 * 1.6 - (i / Math.max(1, stitches.length)) * 0.6); m.scale.y = Math.max(0.001, k); });
+    const dw = kindS === 'debride' ? Wn.npwt : kindS === 'graft' ? Wn.bolster : kindS === 'secondary' ? [0.25, 0.9] : Wn.dress;
+    const dp = dw ? seg(t, dw[0], dw[1]) : 0;
+    dressG.visible = dp > 0.001 && !!dressMesh;
+    dressG.position.z = (1 - dp) * 1.2 + (kindS === 'graft' ? BED_Z + 0.02 : 0.004);
+    dressG.children.forEach((c2, i) => { const m2 = c2 as THREE.Mesh; if (i > 0) (m2.material as THREE.Material).opacity = Math.min(0.3, dp * 0.3) * (m2 === tubeMesh ? 3.3 : 1); });
     // peel: page curl of the skin sheet
     const R = 0.42, front = WU / 2 - peelV * (WU * 1.02), p = pos.array as Float32Array;
     for (let i = 0; i < pos.count; i++) {

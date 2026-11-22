@@ -128,3 +128,31 @@ def test_auto_scale_override_wins_over_assumed_distance():
 def test_auto_rejects_height_without_weight():
     r = client.post("/api/auto", files={"image": ("w.jpg", SAMPLE.read_bytes(), "image/jpeg")}, data={"height_cm": "170"})
     assert r.status_code == 422
+
+
+def test_workspaces_keep_cases_private():
+    an = {"calibrated": True, "area_cm2": 5.0, "perimeter_mm": 40.0, "mm_per_pixel": 0.3, "model": "mobilenetv2-256"}
+    a, b = {"X-Workspace": "ws-aaaa"}, {"X-Workspace": "ws-bbbb"}
+    r = client.post("/api/cases", data={"patient_code": "W-1", "analysis_json": json.dumps(an)}, headers=a)
+    assert r.status_code == 200, r.text
+    cid = r.json()["id"]
+    assert [c["id"] for c in client.get("/api/cases", headers=a).json()] == [cid]
+    assert client.get("/api/cases", headers=b).json() == []
+    assert client.get(f"/api/cases/{cid}", headers=b).status_code == 404
+    assert client.delete(f"/api/cases/{cid}", headers=b).status_code == 404
+    assert "W-1" not in client.get("/api/cases/export.csv", headers=b).text
+    assert "W-1" in client.get("/api/cases/export.csv", params={"ws": "ws-aaaa"}).text
+    assert client.delete(f"/api/cases/{cid}", headers=a).status_code == 200
+
+
+@pytest.mark.skipif(not os.environ.get("TEST_DATABASE_URL"), reason="set TEST_DATABASE_URL to run the PostgreSQL round trip")
+def test_postgres_round_trip(monkeypatch):
+    from app import db
+    monkeypatch.setattr(db, "DATABASE_URL", os.environ["TEST_DATABASE_URL"])
+    monkeypatch.setattr(db, "PG", True)
+    monkeypatch.setattr(db, "SCHEMA", db.SCHEMA.replace("BLOB", "BYTEA"))
+    cid = db.add_case("pg-ws", "PG-1", "lab", "2026-01-01T00:00:00+00:00", "m", {"calibrated": True, "area_cm2": 3.0}, "", b"\xff\xd8thumb")
+    assert db.get_case("pg-ws", cid)["patient_code"] == "PG-1"
+    assert db.get_thumb("pg-ws", cid) == b"\xff\xd8thumb"
+    assert db.get_case("other", cid) is None
+    assert db.delete_case("pg-ws", cid)

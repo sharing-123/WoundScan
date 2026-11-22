@@ -250,3 +250,20 @@
 .try .case-list li { border-color: var(--rule); background: #14110e; }
 .try .m.warn b { color: #ff7a82; }
 .try .v3 { box-shadow: 0 40px 90px -40px #000, 0 0 0 1px #2d2722; }
+
+.diff { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: grid; gap: 0.55rem; }
+.diff li { display: grid; gap: 0.2rem; }
+.dr-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.95rem; }
+.dr-top span { font: 600 0.8rem var(--mono); color: var(--ink-2); }
+.diff i { display: block; height: 5px; border-radius: 3px; background: #2d2722; position: relative; overflow: hidden; }
+.diff i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--tape); border-radius: 3px; transition: width 500ms; }
+.diff li:first-child i::after { background: #ffd05a; }
+.diff small { font-size: 0.76rem; color: var(--ink-2); line-height: 1.4; }
+.clinq, .rh-type { margin-bottom: var(--s-3); }
+.clinq summary, .rh-type summary { cursor: pointer; font: 600 0.85rem/1.4 var(--font); color: var(--ink-2); }
+.cq-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1rem; margin-top: var(--s-3); }
+.cq { display: flex; gap: 0.5rem; align-items: flex-start; font: 500 0.86rem/1.4 var(--font); color: var(--ink); cursor: pointer; }
+.cq input { margin-top: 0.2rem; accent-color: var(--tape); width: 15px; height: 15px; flex: none; }
+.neo { margin: var(--s-2) 0 0; padding-left: 1.2rem; display: grid; gap: 0.4rem; font-size: 0.86rem; }
+.neo small { display: block; color: var(--ink-2); font-size: 0.78rem; line-height: 1.45; }
+@media (max-width: 960px) { .cq-grid { grid-template-columns: minmax(0, 1fr); } }

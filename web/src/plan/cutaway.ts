@@ -10,12 +10,13 @@ const ease = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x));
 const seg = (t: number, a: number, b: number) => ease((t - a) / (b - a));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
-export type Kind = 'closure' | 'flap' | 'graft' | 'debride' | 'secondary';
+export type Kind = 'closure' | 'flap' | 'graft' | 'debride' | 'secondary' | 'biopsy';
 export interface Stage { id: string; t0: number; t1: number; title: L2; body: L2; layer?: 'deep' | 'dermal' | 'skin' }
 export interface Timeline { kind: Kind; stages: Stage[]; win: Record<string, [number, number]> }
 
 export function kindOf(cs: Case): Kind {
   const t = cs.plan.tech;
+  if (t === 'biopsy') return 'biopsy';
   return t === 'stsg' || t === 'ftsg' ? 'graft' : ['adv', 'vy', 'z', 'flapbesar'].includes(t) ? 'flap' : t === 'debridemen' ? 'debride' : t === 'sekunder' ? 'secondary' : 'closure';
 }
 
@@ -30,22 +31,24 @@ export function timeline(cs: Case): Timeline {
   const mark = mk('mark', 0, 0.14, L('Marking', 'Marking'), L('Lines are drawn on the skin with a sterile marker before the first cut: the wound edge, the margin and the closing line. They are drawn from this photo.', 'Garis digambar di kulit dengan spidol steril sebelum sayatan pertama: tepi luka, margin, dan garis penutupan. Garis ini digambar dari foto ini.'));
   let stages: Stage[] = [], win: Timeline['win'] = {};
   if (kind === 'closure') {
-    win = { cut: [0.14, 0.36], under: [0.36, 0.5], deep: [0.5, 0.62], dermal: [0.62, 0.74], skin: [0.74, 1] };
+    win = { cut: [0.14, 0.36], under: [0.36, 0.5], deep: [0.5, 0.62], dermal: [0.62, 0.74], skin: [0.74, 0.9], dress: [0.9, 1] };
     stages = [mark,
       mk('cut', 0.14, 0.36, L('Excision', 'Eksisi'), L(`The wound edge is cut out to bleeding tissue. Here the defect reaches ${layerEn} (estimated depth about ${d} cm).`, `Tepi luka dieksisi hingga jaringan berdarah. Di sini defek mencapai ${layerId} (perkiraan kedalaman sekitar ${d} cm).`)),
       mk('under', 0.36, 0.5, L('Undermining', 'Undermining'), L('Skin and fat are released from the fascia below so the two edges meet without tension.', 'Kulit dan lemak dibebaskan dari fasia di bawahnya agar kedua tepi bertemu tanpa tegangan.')),
       mk('deep', 0.5, 0.62, L('Layer 1: deep (subcutaneous) sutures', 'Lapis 1: jahitan dalam (subkutan)'), deep, 'deep'),
       mk('dermal', 0.62, 0.74, L('Layer 2: dermal (subdermal) sutures', 'Lapis 2: jahitan dermal (subdermal)'), dermal, 'dermal'),
-      mk('skin', 0.74, 1, L('Layer 3: skin sutures', 'Lapis 3: jahitan kulit'), skin, 'skin')];
+      mk('skin', 0.74, 0.9, L('Layer 3: skin sutures', 'Lapis 3: jahitan kulit'), skin, 'skin'),
+      mk('dress', 0.9, 1, L('Dressing', 'Dressing'), L('A non-adherent or silicone dressing covers the closure. Keep it dry for 48 hours; sutures come out by site (5 to 14 days).', 'Dressing non-lengket atau silikon menutup jahitan. Jaga tetap kering 48 jam; jahitan dilepas sesuai lokasi (5 sampai 14 hari).'))];
   } else if (kind === 'flap') {
-    win = { cut: [0.12, 0.3], lift: [0.3, 0.44], move: [0.44, 0.62], deep: [0.62, 0.72], dermal: [0.72, 0.8], skin: [0.8, 1] };
+    win = { cut: [0.12, 0.3], lift: [0.3, 0.44], move: [0.44, 0.62], deep: [0.62, 0.72], dermal: [0.72, 0.8], skin: [0.8, 0.92], dress: [0.92, 1] };
     stages = [mark,
       mk('cut', 0.12, 0.3, L('Incision of the flap and the defect', 'Sayatan flap dan defek'), L('The defect is excised and the flap is cut along the marked lines, keeping the base (pedicle) attached.', 'Defek dieksisi dan flap disayat sepanjang garis marking, dasar (pedikel) tetap menempel.')),
       mk('lift', 0.3, 0.44, L('Elevation', 'Elevasi'), L('The flap is lifted off the fascia with its fat and blood supply. Perforators at the base are protected.', 'Flap diangkat dari fasia bersama lemak dan pasokan darahnya. Perforator di dasar dilindungi.')),
       mk('move', 0.44, 0.62, L('Transposition', 'Transposisi'), L('The flap slides into the defect without twisting its base. The gap it leaves behind is closed in the next steps.', 'Flap digeser ke defek tanpa memutar dasarnya. Celah yang ditinggalkan ditutup pada langkah berikutnya.')),
       mk('deep', 0.62, 0.72, L('Layer 1: deep (subcutaneous) sutures', 'Lapis 1: jahitan dalam (subkutan)'), deep, 'deep'),
       mk('dermal', 0.72, 0.8, L('Layer 2: dermal (subdermal) sutures', 'Lapis 2: jahitan dermal (subdermal)'), dermal, 'dermal'),
-      mk('skin', 0.8, 1, L('Layer 3: skin sutures', 'Lapis 3: jahitan kulit'), skin, 'skin')];
+      mk('skin', 0.8, 0.92, L('Layer 3: skin sutures', 'Lapis 3: jahitan kulit'), skin, 'skin'),
+      mk('dress', 0.92, 1, L('Dressing', 'Dressing'), L('A non-adherent or silicone dressing covers the closure. Keep it dry for 48 hours; sutures come out by site (5 to 14 days).', 'Dressing non-lengket atau silikon menutup jahitan. Jaga tetap kering 48 jam; jahitan dilepas sesuai lokasi (5 sampai 14 hari).'))];
   } else if (kind === 'graft') {
     win = { harvest: [0.12, 0.3], mesh: [0.3, 0.4], place: [0.4, 0.62], fix: [0.62, 0.76], bolster: [0.76, 1] };
     stages = [mk('prep', 0, 0.12, L('Bed preparation', 'Persiapan dasar'), L('Dead tissue and slough are removed until the bed bleeds and is red and granular. A graft only takes on a bed with its own blood supply.', 'Jaringan mati dan slough dibuang hingga dasar berdarah, merah, dan granuler. Cangkok hanya hidup pada dasar yang berpembuluh.')),
@@ -60,6 +63,11 @@ export function timeline(cs: Case): Timeline {
       mk('cut', 0.15, 0.5, L('Sharp debridement', 'Debridemen tajam'), L('Necrotic tissue and slough are cut away down to bleeding tissue, layer by layer. Perfusion is checked before cutting.', 'Jaringan nekrotik dan slough dipotong hingga jaringan berdarah, lapis demi lapis. Perfusi diperiksa sebelum memotong.')),
       mk('bed', 0.5, 0.65, L('Irrigation and a fresh bed', 'Irigasi dan dasar yang segar'), L('The bed is washed out and a deep tissue sample is taken for culture. Reconstruction waits until the bed is clean.', 'Dasar dibilas dan sampel jaringan dalam diambil untuk kultur. Rekonstruksi menunggu dasar bersih.')),
       mk('npwt', 0.65, 1, L('Negative pressure dressing', 'Dressing tekanan negatif'), L('A foam dressing under suction keeps the bed clean and builds granulation until a graft or flap can be done.', 'Dressing busa dengan hisapan menjaga dasar bersih dan membangun granulasi sampai cangkok atau flap bisa dikerjakan.'))];
+  } else if (kind === 'biopsy') {
+    win = { cut: [0.15, 0.5], dress: [0.55, 0.85] };
+    stages = [mark,
+      mk('cut', 0.15, 0.5, L('Punch biopsy', 'Biopsi punch'), L('A 4 mm punch is rotated through the edge of the lesion into the fat, taking tissue and normal skin together. Several sites for a large lesion.', 'Punch 4 mm diputar melalui tepi lesi hingga lemak, mengambil jaringan beserta kulit normal. Beberapa lokasi untuk lesi besar.')),
+      mk('dress', 0.5, 1, L('Specimen and dressing', 'Spesimen dan dressing'), L('The cores go to pathology in formalin. The small defects are closed with one suture each or left to heal under a dressing. Nothing is reconstructed until the result is back.', 'Spesimen dikirim ke patologi dalam formalin. Defek kecil dijahit satu jahitan atau dibiarkan sembuh di bawah dressing. Tidak ada rekonstruksi sebelum hasil keluar.'))];
   } else {
     win = { dress: [0, 1] };
     stages = [mk('dress', 0, 1, L('Moist dressing and follow-up', 'Dressing lembap dan kontrol'), L('The wound heals from the base up under a moist non-stick dressing. Measure it at every visit and compare.', 'Luka sembuh dari dasar ke atas di bawah dressing lembap non-lengket. Ukur setiap kunjungan dan bandingkan.'))];
@@ -149,6 +157,10 @@ export function buildCutaway(cs: Case): Cut {
   } else {
     column(gw / 2, BW / 2, right);
   }
+  const padM = new THREE.MeshStandardMaterial({ color: '#f1ede4', roughness: 0.95 }); disposables.push(padM);
+  const pad = box(-gw / 2 - 0.9, gw / 2 + 0.9, 0.05, 0.0, padM, g, BD - 0.1); pad.visible = false;
+  const punchM = new THREE.MeshStandardMaterial({ color: '#d98a7a', roughness: 0.5 }); disposables.push(punchM);
+  const punch = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.95, 20), punchM); punch.position.set(-gw / 2 + 0.05, -0.45, 0.2); punch.visible = false; g.add(punch); disposables.push(punch.geometry);
 
   // lesion that sits in the notch before the operation
   const tis = cs.tissue;
@@ -216,8 +228,12 @@ export function buildCutaway(cs: Case): Cut {
     pens.forEach((p) => { p.visible = markA > 0.02 && kind !== 'secondary'; p.scale.y = 1; });
     // lesion: lifted out in the cutting phase
     const [c0, c1] = W.cut || [0.14, 0.36];
-    const cutE = kind === 'secondary' ? 0 : seg(t, c0, c1);
-    lesion.visible = kind !== 'graft' && cutE < 0.999;
+    const cutE = kind === 'secondary' || kind === 'biopsy' ? 0 : seg(t, c0, c1);
+    if (kind === 'biopsy') { const pe = seg(t, c0, c1); punch.visible = pe > 0.01 && t < 0.9; punch.position.y = -0.45 + 1.3 * pe; punch.position.x = -gw / 2 + 0.05 + 0.5 * Math.max(0, pe - 0.7); punch.rotation.z = -0.3 * Math.max(0, pe - 0.7); }
+    const dr = W.dress && kind !== 'secondary' ? seg(t, W.dress[0], W.dress[1]) : 0;
+    pad.visible = (kind === 'closure' || kind === 'flap' || kind === 'biopsy') && dr > 0.001;
+    pad.position.y = 0.025 + (1 - ease(dr)) * 0.9;
+    lesion.visible = kind !== 'graft' && cutE < 0.999 && !(kind === 'closure' && gf < 0.45);
     lesion.position.set(1.5 * cutE, 1.1 * Math.sin(Math.min(1, cutE * 1.3) * Math.PI * 0.5), 0.3 * cutE);
     lesion.rotation.z = -0.5 * cutE;
     lesion.children.forEach((c, i) => { const m = c as THREE.Mesh; m.visible = !(kind === 'debride' && i === 0 && cutE > 0.5 && false); });

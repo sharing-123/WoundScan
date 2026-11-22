@@ -1,5 +1,5 @@
-"""WoundScan API. Everything runs on this machine: photos are processed in memory and only the small thumbnail and
-numbers of a case you choose to save are written to the local SQLite file."""
+"""WoundScan API. Photos are processed in memory; only the small thumbnail and numbers of a case you choose to save are
+stored (SQLite file, or PostgreSQL when DATABASE_URL is set), in your own workspace."""
 import base64
 import csv
 import io
@@ -10,7 +10,7 @@ from typing import Optional
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -93,7 +93,7 @@ def jpeg_thumb(rgb: np.ndarray, side=480) -> bytes:
 @app.get("/api/health")
 def health():
     reg = registry()
-    return {"status": "ok", "models": {k: Path(v["file"]).is_file() for k, v in reg.items()}, "database": db.DB_PATH.name}
+    return {"status": "ok", "models": {k: Path(v["file"]).is_file() for k, v in reg.items()}, "database": db.label()}
 
 
 @app.get("/api/models")
@@ -220,10 +220,16 @@ async def auto(
 
 
 # ---------------------------------------------------------------- cases
+def ws(v: str) -> str:
+    """workspace id: letters, digits and dashes only, 64 characters at most; empty is the shared local workspace"""
+    v = (v or "").strip()
+    return v if len(v) <= 64 and all(ch.isalnum() or ch in "-_" for ch in v) else ""
+
+
 @app.post("/api/cases")
 async def create_case(
     patient_code: str = Form(...), label: str = Form(""), captured_at: Optional[str] = Form(None), notes: str = Form(""),
-    analysis_json: str = Form(...), image: Optional[UploadFile] = File(None),
+    analysis_json: str = Form(...), image: Optional[UploadFile] = File(None), x_workspace: str = Header("", max_length=64),
 ):
     patient_code = patient_code.strip()
     if not (1 <= len(patient_code) <= 40) or not all(ch.isalnum() or ch in "-_" for ch in patient_code):
@@ -238,57 +244,57 @@ async def create_case(
     if image is not None:
         rgb, _ = decode_image(await image.read())
         thumb = jpeg_thumb(rgb)
-    cid = db.add_case(patient_code, label[:80], captured_at, analysis.get("model", DEFAULT_MODEL), analysis, notes[:2000], thumb)
+    cid = db.add_case(ws(x_workspace), patient_code, label[:80], captured_at, analysis.get("model", DEFAULT_MODEL), analysis, notes[:2000], thumb)
     return {"id": cid}
 
 
 @app.get("/api/cases")
-def cases(patient_code: Optional[str] = None):
-    return db.list_cases(patient_code)
+def cases(patient_code: Optional[str] = None, x_workspace: str = Header("", max_length=64)):
+    return db.list_cases(ws(x_workspace), patient_code)
 
 
 @app.get("/api/cases/export.csv")
-def export_csv():
+def export_csv(ws_q: str = Query("", alias="ws", max_length=64), x_workspace: str = Header("", max_length=64)):
     cols = ["id", "patient_code", "label", "captured_at", "model", "calibrated", "area_cm2", "perimeter_mm", "tbsa_percent", "mm_per_pixel", "notes"]
     buf = io.StringIO()
     wr = csv.writer(buf)
     wr.writerow(cols)
-    for c in db.list_cases(limit=100000):
+    for c in db.list_cases(ws(x_workspace or ws_q), limit=100000):
         wr.writerow([c[k] for k in cols])
     return Response(buf.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=woundscan_cases.csv"})
 
 
 @app.get("/api/cases/{cid}")
-def case(cid: str):
-    c = db.get_case(cid)
+def case(cid: str, x_workspace: str = Header("", max_length=64)):
+    c = db.get_case(ws(x_workspace), cid)
     if c is None:
         raise HTTPException(404, "case not found")
     return c
 
 
 @app.get("/api/cases/{cid}/thumb")
-def case_thumb(cid: str):
-    t = db.get_thumb(cid)
+def case_thumb(cid: str, ws_q: str = Query("", alias="ws", max_length=64), x_workspace: str = Header("", max_length=64)):
+    t = db.get_thumb(ws(x_workspace or ws_q), cid)
     if t is None:
         raise HTTPException(404, "no thumbnail")
     return Response(t, media_type="image/jpeg")
 
 
 @app.delete("/api/cases/{cid}")
-def delete_case(cid: str):
-    if not db.delete_case(cid):
+def delete_case(cid: str, x_workspace: str = Header("", max_length=64)):
+    if not db.delete_case(ws(x_workspace), cid):
         raise HTTPException(404, "case not found")
     return {"deleted": cid}
 
 
 @app.get("/api/patients")
-def patients():
-    return db.patients()
+def patients(x_workspace: str = Header("", max_length=64)):
+    return db.patients(ws(x_workspace))
 
 
 @app.get("/api/patients/{code}/trend")
-def trend(code: str):
-    return {"patient_code": code, **healing_trend(db.list_cases(code))}
+def trend(code: str, x_workspace: str = Header("", max_length=64)):
+    return {"patient_code": code, **healing_trend(db.list_cases(ws(x_workspace), code))}
 
 
 # ---------------------------------------------------------------- built website

@@ -1,9 +1,9 @@
 /* The automatic workbench: one photo in, a full case out. Nothing here asks the clinician to type a finding. */
-import { api, ApiError, type Analysis, type CaseRow } from './api';
+import { api, ApiError, wsQuery, type Analysis, type CaseRow } from './api';
 import { renderTrend } from './trend';
 import { lang, onLang } from '../i18n';
 import { TYPES, REGIONS, pick, dec, type TypeId, type RegionId } from '../clinic/kb';
-import { buildCase, type Case, type Overrides } from '../clinic/engine';
+import { buildCase, type Case, type Overrides, type ClinKey } from '../clinic/engine';
 import { makeStage, type Stage } from '../plan/raster';
 import { TECH_NAME, type Tech } from '../plan/planner';
 import { buildGeo, polyLen } from '../plan/geom';
@@ -17,7 +17,20 @@ const T = (en: string, id: string) => (lang() === 'id' ? id : en);
 const num = (v: number, d = 1) => (lang() === 'id' ? v.toFixed(d).replace('.', ',') : v.toFixed(d));
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
 const SAMPLES = ['dfu_1', 'pressure_1', 'dehisc_1', 'venous_1', 'dfu_2'];
-const TECHS: Tech[] = ['linear', 'fusiform', 'adv', 'vy', 'z', 'stsg', 'ftsg', 'debridemen', 'sekunder', 'flapbesar'];
+const TECHS: Tech[] = ['linear', 'fusiform', 'adv', 'vy', 'z', 'stsg', 'ftsg', 'debridemen', 'sekunder', 'flapbesar', 'biopsy'];
+const TYPE_ORDER: TypeId[] = ['diabetic', 'pressure', 'venous', 'arterial', 'surgical', 'trauma', 'burn', 'malignant', 'other'];
+const CLIN: [ClinKey, string, string][] = [
+  ['chronic', 'Not healed after 6 weeks of good care', 'Tidak sembuh setelah 6 minggu perawatan baik'],
+  ['scarHistory', 'On an old burn scar, a radiotherapy field or a decades-old ulcer', 'Pada parut luka bakar lama, area radioterapi, atau ulkus puluhan tahun'],
+  ['pearly', 'Pearly or rolled, raised border', 'Tepi mutiara atau menggulung dan menonjol'],
+  ['friable', 'Bleeds easily, friable tissue', 'Mudah berdarah, jaringan rapuh'],
+  ['pigmented', 'Brown or black pigment, growing or changing', 'Pigmen cokelat atau hitam, membesar atau berubah'],
+  ['sunSite', 'Sun-exposed site (face, scalp, ear, lip, back of the hand)', 'Lokasi terpapar matahari (wajah, kepala, telinga, bibir, punggung tangan)'],
+  ['diabetes', 'Diabetes or neuropathy', 'Diabetes atau neuropati'],
+  ['noPulse', 'Absent foot pulses, rest pain, or ABI below 0.5', 'Nadi kaki tidak teraba, nyeri istirahat, atau ABI di bawah 0,5'],
+  ['burnCause', 'Caused by heat, chemical or electricity', 'Akibat panas, bahan kimia, atau listrik'],
+  ['biteCause', 'Bite or other injury', 'Gigitan atau cedera lain'],
+];
 const TISSUE_COL: Record<string, string> = { granulation: '#d8574b', slough: '#e7cf6b', necrosis: '#2a2420', epithelium: '#f1c9bf' };
 
 type Tab = 'annot' | 'plan' | 'three' | 'recs';
@@ -201,10 +214,11 @@ export function mountWorkbench() {
     const A = a as Analysis;
     const conf = Math.round(c.typeConfidence * 100);
     const acc = A.type?.accuracy != null ? Math.round(A.type.accuracy * 100) : null;
-    const alt = (['diabetic', 'pressure', 'venous', 'surgical', 'trauma', 'other'] as TypeId[]).map((id) => {
-      const p = A.type?.probs?.[id] ?? 0;
-      return `<button type="button" class="chip ${id === c.type ? 'on' : ''}" data-type="${id}">${esc(typeName(id))}<small>${Math.round(p * 100)}%</small></button>`;
-    }).join('');
+    const share = (id: TypeId) => c.differential.find((d) => d.id === id)?.share ?? 0;
+    const alt = TYPE_ORDER.map((id) => `<button type="button" class="chip ${id === c.type ? 'on' : ''}" data-type="${id}">${esc(typeName(id))}<small>${share(id) >= 0.04 ? `${Math.round(share(id) * 100)}%` : ''}</small></button>`).join('');
+    const diff = c.differential.map((d) => `<li><div class="dr-top"><b>${esc(typeName(d.id))}</b><span>${Math.round(d.share * 100)}%</span></div><i style="--w:${Math.round(d.share * 100)}%"></i>${d.why.length ? `<small>${d.why.map((w) => esc(pick(w))).join(' · ')}</small>` : ''}</li>`).join('');
+    const cl = c.clinNow;
+    const clinq = CLIN.map(([k, en, id]) => `<label class="cq"><input type="checkbox" data-clin="${k}" ${cl[k] ? 'checked' : ''} /><span>${esc(T(en, id))}</span></label>`).join('');
     const reg = (Object.keys(REGIONS) as RegionId[]).map((id) => `<button type="button" class="chip ${id === c.region ? 'on' : ''}" data-region="${id}">${esc(pick(REGIONS[id].name))}</button>`).join('');
     return `
       <header class="res-head">
@@ -213,14 +227,17 @@ export function mountWorkbench() {
           <h3>${esc(pick(c.dx.name))}</h3>
           <p class="dx"><strong>${esc(pick(c.dx.grade))}</strong> · ${esc(pick(c.dx.one))}</p>
           <p class="rh-sub">${!A.type ? T('No wound-type model is installed on this machine, so choose the type below. Everything else still runs.', 'Model jenis luka tidak terpasang di komputer ini, jadi pilih jenis di bawah. Bagian lain tetap berjalan.') : ''}${A.type && c.typeAuto ? T(`The model leans this way at ${conf}%. `, `Model condong ke arah ini sebesar ${conf}%. `) : ''}${A.type && acc != null ? T(`On held-out photos it names the right type about ${acc}% of the time across six types, so treat it as a first guess and change it below if you know better.`, `Pada foto uji ia menebak jenis yang tepat sekitar ${acc}% dari enam jenis, jadi anggap ini tebakan awal dan ubah di bawah bila Anda lebih tahu.`) : ''}</p>
-          <div class="chips" role="group" aria-label="${T('Wound type', 'Jenis luka')}">${alt}</div>
+          <ol class="diff" aria-label="${T('Differential diagnosis', 'Diagnosis banding')}">${diff}</ol>
+          <details class="clinq" ${Object.values(cl).some(Boolean) ? 'open' : ''}><summary>${T('Add what the photo cannot show (optional): the differential and the cancer screen update at once', 'Tambahkan yang tidak terlihat di foto (opsional): diagnosis banding dan skrining kanker ikut berubah')}</summary><div class="cq-grid">${clinq}</div></details>
+          <details class="rh-type"><summary>${T('Choose the type myself', 'Pilih jenis sendiri')}</summary><div class="chips" role="group" aria-label="${T('Wound type', 'Jenis luka')}">${alt}</div></details>
           <details class="rh-reg"><summary>${T('Site', 'Lokasi')}: ${esc(pick(REGIONS[c.region].name))}${c.regionAuto ? T(' (typical for this type, change if different)', ' (umum untuk jenis ini, ubah bila berbeda)') : ''}</summary><div class="chips">${reg}</div></details>
         </div>
         <div class="rh-flags">
           <div class="flag ${settingCls[c.setting.level]}"><span class="fl-k">${T('Where to treat', 'Ditangani di')}</span><strong>${esc(pick(c.setting.label))}</strong><ul>${c.setting.why.map((w) => `<li>${esc(pick(w))}</li>`).join('')}</ul></div>
-          <div class="flag ${c.malignancy.flagged ? 'bad' : 'plain'}"><span class="fl-k">${T('Malignancy screen', 'Skrining keganasan')}</span>
-            <strong>${c.malignancy.flagged ? T('Needs a biopsy', 'Perlu biopsi') : T('Nothing suspicious in the picture', 'Tidak ada yang mencurigakan pada gambar')}</strong>
-            <ul>${(c.malignancy.flagged ? c.malignancy.reasons.map((r) => pick(r)) : []).concat([T('A photo cannot rule cancer out. Biopsy a wound that has not improved in 4 to 6 weeks, or has rolled raised edges, friable bleeding tissue or a growth.', 'Foto tidak dapat menyingkirkan kanker. Biopsi luka yang tidak membaik dalam 4 sampai 6 minggu, atau bertepi menggulung dan menonjol, jaringan rapuh mudah berdarah, atau tumbuh massa.')]).map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div>
+          <div class="flag ${c.malignancy.tier === 'high' ? 'bad' : c.malignancy.tier === 'intermediate' ? 'mid' : 'plain'}"><span class="fl-k">${T('Malignancy screen', 'Skrining keganasan')} · ${{ low: T('low suspicion', 'kecurigaan rendah'), intermediate: T('intermediate suspicion', 'kecurigaan sedang'), high: T('high suspicion', 'kecurigaan tinggi') }[c.malignancy.tier]}</span>
+            <strong>${c.malignancy.tier === 'low' ? T('Nothing in the photo or your answers points to cancer', 'Tidak ada pada foto atau jawaban Anda yang mengarah ke kanker') : T('Biopsy before any reconstruction', 'Biopsi sebelum rekonstruksi apa pun')}</strong>
+            <ul>${c.malignancy.reasons.map((r) => `<li>${esc(pick(r))}</li>`).join('')}<li>${T('A photo cannot rule cancer out. Biopsy any wound that has not improved in 4 to 6 weeks.', 'Foto tidak dapat menyingkirkan kanker. Biopsi setiap luka yang tidak membaik dalam 4 sampai 6 minggu.')}</li></ul>
+            ${c.malignancy.neoplasm.length ? `<ol class="neo">${c.malignancy.neoplasm.map((n) => `<li><b>${esc(pick(n.name))}</b><small>${esc(pick(n.why))}</small></li>`).join('')}</ol>` : ''}</div>
         </div>
       </header>`;
   }
@@ -286,7 +303,7 @@ export function mountWorkbench() {
     const c = cs;
     if (!c.later) stage = 'now';
     const P = view();
-    const modeTxt = P.decision.mode === 'graft' ? T('Skin graft', 'Cangkok kulit') : P.decision.mode === 'flap' ? T('Flap', 'Flap') : T('Debride first', 'Debridemen dulu');
+    const modeTxt = P.plan.tech === 'biopsy' ? T('Biopsy first', 'Biopsi dulu') : P.decision.mode === 'graft' ? T('Skin graft', 'Cangkok kulit') : P.decision.mode === 'flap' ? T('Flap', 'Flap') : T('Debride first', 'Debridemen dulu');
     const techChips = TECHS.map((t) => `<button type="button" class="chip ${t === P.plan.tech ? 'on' : ''}" data-tech="${t}">${esc(pick(TECH_NAME[t]))}</button>`).join('');
     res.innerHTML = `
       <div class="res-top"><button type="button" class="chip" id="again">${T('New photo', 'Foto baru')}</button></div>
@@ -314,7 +331,7 @@ export function mountWorkbench() {
         </div>
       </section>
       <section class="pane" data-pane="plan" ${tab === 'plan' ? '' : 'hidden'}>
-        ${c.later ? `<div class="seg stg" role="group"><button type="button" data-stage="now" aria-pressed="${stage === 'now'}">${T('Now: debridement', 'Sekarang: debridemen')}</button><button type="button" data-stage="later" aria-pressed="${stage === 'later'}">${T('Once the bed is clean: ', 'Setelah dasar bersih: ')}${esc(pick(c.later.plan.title))}</button></div>` : ''}
+        ${c.later ? `<div class="seg stg" role="group"><button type="button" data-stage="now" aria-pressed="${stage === 'now'}">${c.plan.tech === 'biopsy' ? T('Now: biopsy and staging', 'Sekarang: biopsi dan staging') : T('Now: debridement', 'Sekarang: debridemen')}</button><button type="button" data-stage="later" aria-pressed="${stage === 'later'}">${esc(pick(c.laterLabel as { en: string; id: string }))}${esc(pick(c.later.plan.title))}</button></div>` : ''}
         <div class="decision"><span class="dc-k">${stage === 'later' ? T('Decision for the second stage', 'Keputusan tahap kedua') : T('Decision', 'Keputusan')}</span><strong>${esc(modeTxt)}: ${esc(pick(P.plan.title))}</strong>
           <ul>${P.autoWhy.map((w) => `<li>${esc(pick(w))}</li>`).join('')}</ul>
           <details class="alt"><summary>${T('Prefer another technique?', 'Ingin teknik lain?')}</summary><div class="chips">${techChips}</div></details></div>
@@ -364,6 +381,7 @@ export function mountWorkbench() {
     const c = cs;
     $('again').onclick = () => { viewer?.destroy(); viewer = null; res.hidden = true; start.hidden = false; anno = null; ctl?.abort(); window.scrollTo({ top: root.getBoundingClientRect().top + scrollY - 90, behavior: 'smooth' }); };
     res.querySelectorAll<HTMLButtonElement>('[data-type]').forEach((b) => (b.onclick = () => { ov.type = b.dataset.type as TypeId; delete ov.region; rebuild(); }));
+    res.querySelectorAll<HTMLInputElement>('[data-clin]').forEach((b) => (b.onchange = () => { ov.clin = { ...(ov.clin || {}), [b.dataset.clin as ClinKey]: b.checked }; rebuild(); }));
     res.querySelectorAll<HTMLButtonElement>('[data-region]').forEach((b) => (b.onclick = () => { ov.region = b.dataset.region as RegionId; rebuild(); }));
     res.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach((b) => (b.onclick = () => { stage = b.dataset.stage as 'now' | 'later'; viewer?.destroy(); viewer = null; render(false); }));
     res.querySelectorAll<HTMLButtonElement>('[data-tech]').forEach((b) => (b.onclick = () => { ov.tech = b.dataset.tech as Tech; rebuild(); }));
@@ -521,7 +539,7 @@ export function mountWorkbench() {
     if (!rows.length) { const li = document.createElement('li'); li.className = 'empty'; li.textContent = T('No cases yet. Save your first analysis.', 'Belum ada kasus. Simpan hasil analisis pertama.'); caseList.append(li); }
     rows.forEach((c) => {
       const li = document.createElement('li');
-      const thumb = c.has_thumb ? Object.assign(document.createElement('img'), { src: `/api/cases/${c.id}/thumb`, alt: '', loading: 'lazy' }) : Object.assign(document.createElement('div'), { className: 'ph' });
+      const thumb = c.has_thumb ? Object.assign(document.createElement('img'), { src: `/api/cases/${c.id}/thumb${wsQuery()}`, alt: '', loading: 'lazy' }) : Object.assign(document.createElement('div'), { className: 'ph' });
       const mid = document.createElement('div');
       const title = document.createElement('div'); title.className = 't'; title.textContent = `${c.patient_code}${c.label ? ` · ${c.label}` : ''}`;
       const meta = document.createElement('div'); meta.className = 'm';
@@ -543,5 +561,6 @@ export function mountWorkbench() {
     if (cs && !res.hidden) { const v = viewer; v?.destroy(); viewer = null; render(false); }
     refreshCases();
   });
+  const csv = document.querySelector<HTMLAnchorElement>('.cases-head a'); if (csv) csv.href = `/api/cases/export.csv${wsQuery()}`;
   refreshCases();
 }

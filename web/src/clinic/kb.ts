@@ -1,4 +1,5 @@
 import { lang } from '../i18n';
+import { EXTRA } from './kb_extra';
 
 export type L2 = { en: string; id: string };
 export type L2s = { en: string[]; id: string[] };
@@ -7,7 +8,7 @@ export const dec = (t: string): string => (lang() === 'id' ? t.replace(/(\d)\.(\
 export const pick = (o: L2): string => dec(o[lang()]);
 export const pickList = (o: L2s): string[] => o[lang()].map(dec);
 
-export type TypeId = 'pressure' | 'diabetic' | 'venous' | 'surgical' | 'trauma' | 'other';
+export type TypeId = 'pressure' | 'diabetic' | 'venous' | 'surgical' | 'trauma' | 'other' | 'burn' | 'arterial' | 'malignant';
 export type RegionId = 'sacrum' | 'heel' | 'foot' | 'lowerleg' | 'trunk' | 'limb' | 'face' | 'hand' | 'joint' | 'scalp';
 
 export interface Protocol {
@@ -25,7 +26,7 @@ export interface Protocol {
   source: string;
 }
 
-export const TYPES: Record<TypeId, Protocol> = {
+const BASE: Record<'pressure' | 'diabetic' | 'venous' | 'surgical' | 'trauma' | 'other', Protocol> = {
   pressure: {
     name: { en: 'Pressure injury', id: 'Luka tekan (dekubitus)' },
     region: 'sacrum',
@@ -161,6 +162,8 @@ export const TYPES: Record<TypeId, Protocol> = {
     source: 'NCCN; BAD',
   },
 };
+
+export const TYPES: Record<TypeId, Protocol> = { ...BASE, ...EXTRA };
 
 export const REGIONS: Record<RegionId, { name: L2; zone: string }> = {
   sacrum: { name: { en: 'Sacrum or buttock', id: 'Sakrum atau glutea' }, zone: 'tekanan' },

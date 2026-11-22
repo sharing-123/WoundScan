@@ -86,9 +86,23 @@ async function json<T>(r: Response): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-async function call(input: string, init?: RequestInit): Promise<Response> {
+/** On a shared server every browser keeps its own workspace id so saved cases stay private to it. On this machine (loopback) the shared local workspace is used. */
+export function workspace(): string {
+  if (['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname)) return '';
   try {
-    return await fetch(input, init);
+    let v = localStorage.getItem('woundscan-ws');
+    if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^a-zA-Z0-9-]/g, ''); localStorage.setItem('woundscan-ws', v); }
+    return v;
+  } catch { return 'session-' + Math.random().toString(16).slice(2, 14); }
+}
+const WS = workspace();
+export const wsQuery = () => (WS ? `?ws=${encodeURIComponent(WS)}` : '');
+
+async function call(input: string, init: RequestInit = {}): Promise<Response> {
+  try {
+    const headers = new Headers(init.headers || {});
+    if (WS) headers.set('X-Workspace', WS);
+    return await fetch(input, { ...init, headers });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e;
     throw new ApiError('network', 0);

@@ -4,7 +4,7 @@ import { polyArea, type Geo, type P2 } from './geom';
 import type { L2 } from '../clinic/kb';
 
 export const L = (en: string, id: string): L2 => ({ en, id });
-export type Tech = 'linear' | 'fusiform' | 'adv' | 'vy' | 'z' | 'stsg' | 'ftsg' | 'debridemen' | 'sekunder' | 'flapbesar';
+export type Tech = 'linear' | 'fusiform' | 'adv' | 'vy' | 'z' | 'stsg' | 'ftsg' | 'debridemen' | 'sekunder' | 'flapbesar' | 'biopsy';
 
 export const TECH_NAME: Record<Tech, L2> = {
   linear: L('Direct linear closure', 'Penutupan linear langsung'),
@@ -17,6 +17,7 @@ export const TECH_NAME: Record<Tech, L2> = {
   debridemen: L('Debridement and bed preparation', 'Debridemen dan persiapan dasar'),
   sekunder: L('Healing by secondary intention', 'Penyembuhan sekunder'),
   flapbesar: L('Regional or free flap (further planning)', 'Flap regional atau bebas (perencanaan lanjut)'),
+  biopsy: L('Biopsy and staging first (no reconstruction yet)', 'Biopsi dan staging dulu (belum rekonstruksi)'),
 };
 
 const ZONE: Record<string, { sp: number; bite: number; thread: L2; remove: L2; maxClose: number }> = {
@@ -351,6 +352,19 @@ export function build(tech: Tech, g: Geo, zone: string, o: Opts = {}): Plan {
     }
     pieces.push({ id: 'graft', role: 'graft', poly: tpl, from: [-(g.W * 0.62), g.H * 0.05] });
     notes.push(L('A graft takes only on a vascular bed: not over bone without periosteum or tendon without paratenon.', 'Cangkok hanya pada dasar berpembuluh; tidak di atas tulang tanpa periosteum atau tendon tanpa paratenon.'));
+  } else if (tech === 'biopsy') {
+    poly(g.poly, 'margin');
+    const nB = Math.max(2, Math.min(4, Math.round((g.shape.rectLong * cm) / 2)));
+    for (let i = 0; i < nB; i++) { const q = g.poly[Math.floor(((i + 0.5) * g.poly.length) / nB)]; dot(q, 'biopsy'); label([q[0] + 10, q[1] - 10], `${i + 1}`, 'biopsy'); }
+    N(L('Punch biopsies (4 mm, at the edge with normal skin)', 'Biopsi punch (4 mm, di tepi dengan kulit normal)'), String(nB));
+    N(L('Lesion size', 'Ukuran lesi'), `${(g.shape.rectLong * cm).toFixed(1)} × ${(g.shape.rectShort * cm).toFixed(1)}`, 'cm');
+    steps.push(
+      L('Photograph with a scale and examine the lymph node basin.', 'Foto dengan skala dan periksa kelenjar regional.'),
+      L(`Local anaesthetic, then ${nB} punch biopsies of 4 mm from the edge, each including normal skin; for a suspected melanoma take an excisional biopsy with a 2 mm margin instead.`, `Anestesi lokal, lalu ${nB} biopsi punch 4 mm dari tepi, masing-masing termasuk kulit normal; untuk dugaan melanoma lakukan biopsi eksisional dengan margin 2 mm.`),
+      L('Send to pathology with the clinical question; review the result in 1 to 2 weeks and plan margins and reconstruction from it.', 'Kirim ke patologi dengan pertanyaan klinis; tinjau hasil dalam 1 sampai 2 minggu dan rencanakan margin serta rekonstruksi darinya.'),
+    );
+    notes.push(L('Nothing is cut out or grafted until the histology is back.', 'Tidak ada yang dieksisi atau dicangkok sebelum hasil histologi keluar.'));
+    after = { kind: 'none' };
   } else if (tech === 'debridemen') {
     const m2 = g.marginPoly(2) || g.poly;
     poly(m2, 'incise', 'excise'); poly(g.poly, 'margin');
