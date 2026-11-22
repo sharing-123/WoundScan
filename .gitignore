@@ -32,3 +32,6 @@ server/data/*.db
 .env
 .env.*
 !.env.example
+
+deploy/cloudflared.exe
+PUBLIC_URL.txt

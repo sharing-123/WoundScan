@@ -27,6 +27,18 @@ python deploy/push_hf.py --space woundscan --database-url "postgresql://user:pas
 
 The Space builds the `Dockerfile` (about 5 to 8 minutes the first time) and starts on port 7860. Check `https://YOUR_USER-woundscan.hf.space/api/health`: it lists the models and `"database": "postgresql"`.
 
+### No paid host: your own PC plus a free Cloudflare quick tunnel
+
+Hugging Face now charges for Docker Spaces. A free alternative that is still the full stack (container, models, Neon PostgreSQL) is to run the image on your own machine and publish it with a Cloudflare quick tunnel:
+
+```powershell
+docker build -t woundscan .
+powershell -ExecutionPolicy Bypass -File deploy\start_public.ps1      # prints https://....trycloudflare.com
+powershell -ExecutionPolicy Bypass -File deploy\keep_awake.ps1        # optional: stops idle sleep while the window is open
+```
+
+The link works only while the PC, Docker and the tunnel window are on, and the address changes each time the tunnel restarts (a stable address needs a free Cloudflare account and a domain). Save `cloudflared.exe` (github.com/cloudflare/cloudflared/releases) as `deploy\cloudflared.exe`.
+
 ### What the container does
 
 * serves the website and the API from one process on `$PORT` (7860 by default);
