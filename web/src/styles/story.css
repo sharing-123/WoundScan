@@ -1,0 +1,358 @@
+/* fixed world + header + story chapters */
+#world {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  touch-action: pan-y;
+  opacity: 0;
+  transition: opacity 1.4s var(--ease-out);
+}
+body.ready #world {
+  opacity: 1;
+}
+
+.bar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s-8);
+  height: 4.25rem;
+  padding-inline: var(--pad);
+  color: var(--fg);
+  transition: background-color 240ms var(--ease-out), border-color 240ms;
+  border-bottom: 1px solid transparent;
+}
+body[data-tone='bone'] .bar {
+  background: var(--bone);
+  border-bottom-color: var(--rule);
+}
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: -0.02em;
+}
+.mark svg {
+  color: var(--tape);
+}
+body[data-tone='bone'] .mark svg {
+  color: var(--ink);
+}
+.links {
+  display: flex;
+  gap: var(--s-6);
+  font-size: 0.93rem;
+}
+.links a {
+  text-decoration: none;
+  color: var(--fg-2);
+  padding-block: var(--s-2);
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: color 160ms, background-size 280ms var(--ease-out);
+}
+@media (hover: hover) {
+  .links a:hover {
+    color: var(--fg);
+    background-size: 100% 1px;
+  }
+}
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+.lang {
+  display: inline-flex;
+  border: 1px solid color-mix(in srgb, var(--fg) 28%, transparent);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.lang button {
+  appearance: none;
+  background: transparent;
+  color: var(--fg-2);
+  border: 0;
+  padding: 0.4rem 0.6rem;
+  font: 600 0.78rem/1 var(--font);
+  cursor: pointer;
+  transition: background-color 160ms, color 160ms;
+}
+.lang button[aria-pressed='true'] {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* ---------- story ---------- */
+.story {
+  position: relative;
+  z-index: 1;
+}
+.chapter {
+  position: relative;
+  isolation: isolate;
+  min-height: calc(var(--vh) * 1vh);
+  display: flex;
+  align-items: center;
+  padding: 6rem var(--pad);
+  pointer-events: none;
+}
+.chapter .copy {
+  pointer-events: auto;
+  width: min(33rem, 100%);
+  display: grid;
+  gap: var(--s-6);
+  align-self: flex-start;
+  position: sticky;
+  top: 26vh;
+}
+.chapter .copy p:not(.fine):not(.lead) {
+  color: var(--fg-2);
+  max-width: 54ch;
+}
+.ch-right {
+  justify-content: flex-end;
+}
+.ch-left {
+  justify-content: flex-start;
+}
+.chapter {
+  align-items: flex-start;
+}
+.ch-hero {
+  align-items: flex-end;
+  padding-bottom: 11vh;
+}
+/* legibility scrim behind the headline only */
+.ch-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgb(13 11 10 / 0.84) 0%, rgb(13 11 10 / 0.55) 38%, rgb(13 11 10 / 0) 64%);
+}
+.ch-hero .copy {
+  width: min(46rem, 100%);
+  gap: var(--s-6);
+  position: relative;
+  top: auto;
+  align-self: auto;
+}
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-4) var(--s-8);
+}
+
+/* 3D labels projected from world anchors */
+.tags {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+.tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  opacity: 0;
+  will-change: transform, opacity;
+  color: var(--on-night);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.tag::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tape);
+}
+.tag .rule {
+  flex: none;
+  width: var(--len, 34px);
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+}
+.tag .txt {
+  padding: 0.12rem 0.5rem;
+  background: rgb(13 11 10 / 0.7);
+  border-radius: 2px;
+}
+.tag[data-side='left'] {
+  flex-direction: row-reverse;
+}
+.tag .v {
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--tape);
+  margin-left: 0.4em;
+}
+
+@media (max-width: 760px) {
+  .bar {
+    grid-template-columns: auto 1fr;
+    height: 3.75rem;
+  }
+  .links {
+    display: none;
+  }
+  .tools {
+    justify-self: end;
+    gap: var(--s-3);
+  }
+  .tools .btn {
+    display: none;
+  }
+  .chapter {
+    padding-block: 5rem 9vh;
+  }
+  .chapter .copy {
+    padding: var(--s-6) 0 0;
+    top: auto;
+    bottom: 9vh;
+    align-self: flex-end;
+  }
+  .chapter::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 62%;
+    background: linear-gradient(to top, rgb(13 11 10 / 0.92) 20%, rgb(13 11 10 / 0));
+    z-index: -1;
+    pointer-events: none;
+  }
+  .tag .txt {
+    font-size: 0.74rem;
+  }
+}
+
+/* no WebGL: the story still reads as plain sections */
+.no-webgl .chapter {
+  min-height: auto;
+  padding-block: 4rem;
+}
+.no-webgl .chapter .copy {
+  position: static;
+}
+
+/* ---------- chapter rail and scroll cue ---------- */
+.rail {
+  position: fixed;
+  right: calc(var(--pad) * 0.55);
+  top: 50%;
+  z-index: 40;
+  display: grid;
+  gap: var(--s-4);
+  transform: translateY(-50%);
+  transition: opacity 320ms var(--ease-out);
+}
+body[data-tone='bone'] .rail,
+body:not(.ready) .rail {
+  opacity: 0;
+  pointer-events: none;
+}
+.rail a {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-3);
+  text-decoration: none;
+  color: var(--on-night-2);
+  font-size: 0.74rem;
+  line-height: 1;
+}
+.rail a span {
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 200ms var(--ease-out), transform 260ms var(--ease-out);
+}
+.rail a i {
+  display: block;
+  width: 14px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+  transition: width 320ms var(--ease-out), opacity 200ms, background-color 200ms;
+}
+.rail a.on {
+  color: var(--tape);
+}
+.rail a.on i {
+  width: 34px;
+  opacity: 1;
+}
+.rail a.on span,
+.rail a:hover span,
+.rail a:focus-visible span {
+  opacity: 1;
+  transform: none;
+}
+@media (max-width: 1100px) {
+  .rail {
+    display: none;
+  }
+}
+
+.cue {
+  position: fixed;
+  right: var(--pad);
+  bottom: 2.25rem;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--on-night-2);
+  font-size: 0.76rem;
+  transition: opacity 400ms var(--ease-out);
+}
+.cue i {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 44px;
+  background: color-mix(in srgb, currentColor 30%, transparent);
+  overflow: hidden;
+}
+.cue i::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 14px;
+  background: var(--tape);
+  animation: cue 2.2s var(--ease-io) infinite;
+}
+@keyframes cue {
+  0% {
+    transform: translateY(-14px);
+  }
+  100% {
+    transform: translateY(44px);
+  }
+}
+.cue.gone,
+body:not(.ready) .cue {
+  opacity: 0;
+}
+@media (max-width: 760px) {
+  .cue {
+    display: none;
+  }
+}

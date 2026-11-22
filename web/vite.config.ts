@@ -1,0 +1,9 @@
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  server: {
+    host: '127.0.0.1',
+    proxy: { '/api': { target: 'http://127.0.0.1:8780', changeOrigin: false } },
+  },
+  build: { target: 'es2022', chunkSizeWarningLimit: 900 },
+});

@@ -18,3 +18,11 @@ node_modules/
 /dist/
 *.egg-info/
 .pytest_cache/
+
+# local environments, builds and logs from the website work
+/xpuenv/
+xpu_install.log
+web/dist/
+web/node_modules/
+web/npm-install.log
+server/data/*.db

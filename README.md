@@ -34,6 +34,18 @@ Keywords. Wound segmentation, Medical image analysis, Reconstructive surgery, De
 </p>
 <p align="center"><sub><em>Figure 1. Browser interface in marking view for a sacral pressure injury. The left panel shows the calibrated segmentation, the dimensions, and the V to Y flap marking, and the right panel lists the ranked flap options with their size limits.</em></sub></p>
 
+## Website and local API
+
+A second front end lives in `web/` (Vite, TypeScript, Three.js, GSAP) with a Python back end in `server/` (FastAPI, onnxruntime, SQLite). The site tells the pipeline as one 3D scroll story and includes a working analysis tool: upload a photo, set a scale with two points or the camera distance, run the segmentation, read area, perimeter, length, width and percent body surface area, save a case under a pseudonymous code and follow the healing trend. Everything runs on loopback (`127.0.0.1:8780`); photographs are processed in memory and only the numbers and a small thumbnail of a case you save are written to one local SQLite file.
+
+```
+pip install -r server/requirements.txt
+cd web && npm install && npm run build && cd ..
+python server/run.py            # or run_site.bat on Windows, then open http://127.0.0.1:8780
+```
+
+For development run `python server/run.py` and `npm run dev` in `web/` (port 5173, proxied to the API). Model weights are not in this repository because the training data is non-commercial. Put `wound_seg.onnx` (MobileNetV2, 256 px) and, optionally, `wound_seg_medetec_adapted_320.onnx` (ResNet34, 320 px, adapted to the Medetec annotation style) in `models/`. The adapted model's cross-validated numbers (grouped by photograph, 38 Medetec photographs) are Dice 0.892, precision 0.914, recall 0.896 and F1 0.905; they are cross-validation results, not an independent external test. Backend tests: `python -m pytest server/tests`.
+
 ## Methods
 
 The application is a static website. All computation happens in the browser through onnxruntime-web, so photographs of patients never leave the device. The segmentation network is a U-Net whose encoder is a MobileNetV2 pretrained on ImageNet. It receives a 256 by 256 image, carries a full resolution skip connection from the input to sharpen boundaries, and is exported to ONNX at about ten megabytes. At inference the probability map is averaged over the original image and its horizontal and vertical flips, then resampled to the working resolution of the photograph, which is capped at 1400 pixels on the long side.
