@@ -1,6 +1,7 @@
 import './styles/base.css';
 import './styles/story.css';
 import './styles/sheet.css';
+import './styles/workbench.css';
 import Lenis from 'lenis';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -125,7 +126,7 @@ function reveal() {
     tl.from(rest, { y: 26, opacity: 0, duration: 0.9, stagger: 0.08 }, 0.18);
   });
   // paper sheet sections
-  gsap.utils.toArray<HTMLElement>('.sheet h2, .ev-item, .fail, .bench, .cases').forEach((n) => {
+  gsap.utils.toArray<HTMLElement>('.sheet h2, .ev-item, .fail, .wb, .cases').forEach((n) => {
     gsap.from(n, { y: 30, opacity: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: n, start: 'top 88%', toggleActions: 'play none none none' } });
   });
 }
@@ -138,7 +139,7 @@ if (!reduce) {
 }
 
 mountEvidence();
-import('./ui/bench').then((m) => m.mountBench()).catch(() => {
+import('./ui/workbench').then((m) => m.mountWorkbench()).catch(() => {
   /* workbench module is optional while building */
 });
 

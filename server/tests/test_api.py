@@ -89,3 +89,33 @@ def test_case_crud_and_trend():
     assert client.delete(f"/api/cases/{ids[0]}").status_code == 200
     assert client.get(f"/api/cases/{ids[0]}").status_code == 404
     assert client.post("/api/cases", data={"patient_code": "Budi Santoso", "analysis_json": "{}"}).status_code == 422
+
+
+SAMPLE = ROOT / "web" / "public" / "samples" / "dfu_1.jpg"
+
+
+def test_auto_returns_the_whole_case_from_one_photo():
+    r = client.post("/api/auto", files={"image": ("w.jpg", SAMPLE.read_bytes(), "image/jpeg")})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert not d.get("empty")
+    assert d["scale"]["source"] in {"card", "assumed_distance"}
+    assert d["scale"]["uncertainty_percent"] > 0
+    assert set(d["tissue"]) == {"granulation", "slough", "necrosis", "epithelium"}
+    assert abs(sum(d["tissue"].values()) - 100) < 1.5
+    assert d["depth_class"] in {"full_devitalised", "full_granulating", "partial", "indeterminate"}
+    assert d["mask_png"] and d["tissue_png"]
+    if d["type"]:
+        assert abs(sum(d["type"]["probs"].values()) - 1) < 1e-3
+
+
+def test_auto_scale_override_wins_over_assumed_distance():
+    r = client.post("/api/auto", files={"image": ("w.jpg", SAMPLE.read_bytes(), "image/jpeg")}, data={"distance_cm": "20", "f35_mm": "26"})
+    d = r.json()
+    assert not d.get("empty")
+    assert d["scale"]["source"] == "user_distance"
+
+
+def test_auto_rejects_height_without_weight():
+    r = client.post("/api/auto", files={"image": ("w.jpg", SAMPLE.read_bytes(), "image/jpeg")}, data={"height_cm": "170"})
+    assert r.status_code == 422

@@ -21,6 +21,9 @@ from .inference import OnnxSegmenter, postprocess
 from .measure import CalibrationError, analyse, scale_from_distance, scale_from_reference
 from .models import DEFAULT_MODEL, registry
 from .trend import healing_trend
+from . import tissue as tis
+from .scale import auto_scale
+from .woundtype import WoundTyper
 
 MAX_BYTES = 15 * 1024 * 1024
 MAX_SIDE = 1600
@@ -33,6 +36,14 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http
                    allow_methods=["*"], allow_headers=["*"])
 
 _segmenters: dict = {}
+_typer = None
+
+
+def typer() -> WoundTyper:
+    global _typer
+    if _typer is None:
+        _typer = WoundTyper()
+    return _typer
 
 
 def segmenter(name: str) -> OnnxSegmenter:
@@ -137,6 +148,74 @@ async def analyze(
     if include_images:
         res["mask_png"] = png_b64((mask * 255).astype(np.uint8))
         res["probability_png"] = png_b64((prob * 255).astype(np.uint8))
+    return res
+
+
+def rgba_png(arr: np.ndarray) -> str:
+    ok, buf = cv2.imencode(".png", cv2.cvtColor(arr, cv2.COLOR_RGBA2BGRA))
+    return "data:image/png;base64," + base64.b64encode(buf.tobytes()).decode()
+
+
+@app.post("/api/auto")
+async def auto(
+    image: UploadFile = File(...),
+    threshold: float = Form(0.5),
+    ref_mm: Optional[float] = Form(None),
+    ref_x1: Optional[float] = Form(None), ref_y1: Optional[float] = Form(None),
+    ref_x2: Optional[float] = Form(None), ref_y2: Optional[float] = Form(None),
+    distance_cm: Optional[float] = Form(None),
+    height_cm: Optional[float] = Form(None),
+    f35_mm: Optional[float] = Form(None),
+    weight_kg: Optional[float] = Form(None),
+):
+    """Everything from one photo: ensemble segmentation, scale (card, EXIF + assumed distance, or user override),
+    measurements, tissue map, peri-wound signs, appearance-based depth class and the most likely wound type."""
+    if not 0.05 <= threshold <= 0.95:
+        raise HTTPException(422, "threshold must be between 0.05 and 0.95")
+    if (height_cm is None) != (weight_kg is None):
+        raise HTTPException(422, "height_cm and weight_kg must be supplied together")
+    rgb, f35 = decode_image(await image.read())
+    f35 = f35_mm or f35
+    h, w = rgb.shape[:2]
+    t0 = time.perf_counter()
+    reg = registry()
+    names = [n for n in ("resnet34-adapted-320", "mobilenetv2-256") if Path(reg[n]["file"]).is_file()]
+    if not names:
+        raise HTTPException(503, "no segmentation model is installed on this machine")
+    weights = {"resnet34-adapted-320": 0.6, "mobilenetv2-256": 0.4}
+    probs = [(weights[n], segmenter(n).predict(rgb)) for n in names]
+    prob = sum(wt * p for wt, p in probs) / sum(wt for wt, _ in probs)
+    mask = postprocess(prob, threshold, True)
+    seg_ms = (time.perf_counter() - t0) * 1000
+    if not mask.any():
+        return {"width": w, "height": h, "empty": True, "calibrated": False, "contours": [], "warnings": ["No wound found in this photo."], "models": names,
+                "inference_ms": round(seg_ms, 1)}
+    # scale: the user's own reference wins, otherwise automatic
+    sc = None
+    try:
+        if None not in (ref_mm, ref_x1, ref_y1, ref_x2, ref_y2):
+            mm, _ = scale_from_reference((ref_x1, ref_y1), (ref_x2, ref_y2), ref_mm, w, h)
+            sc = {"source": "user_reference", "mm_per_pixel": mm, "uncertainty_percent": 5, "detail": {}}
+        elif distance_cm:
+            mm, _ = scale_from_distance(distance_cm, f35, w, h)
+            sc = {"source": "user_distance", "mm_per_pixel": mm, "uncertainty_percent": 15, "detail": {"distance_cm": distance_cm}}
+    except CalibrationError as e:
+        raise HTTPException(422, str(e))
+    if sc is None:
+        sc = auto_scale(rgb, mask, f35)
+    res = analyse(mask, prob, sc["mm_per_pixel"], height_cm, weight_kg)
+    labels, pct, skin = tis.classify(rgb, mask)
+    res.update({
+        "width": w, "height": h, "models": names, "threshold": threshold, "scale": sc,
+        "calibrated": True, "calibration_method": sc["source"], "mm_per_pixel": sc["mm_per_pixel"],
+        "tissue": pct, "signs": tis.signs(rgb, mask, pct, skin, sc["mm_per_pixel"]), "depth_class": tis.depth_class(pct),
+        "exif_f35_mm": f35, "inference_ms": round((time.perf_counter() - t0) * 1000, 1),
+    })
+    t = typer()
+    res["type"] = t.predict(rgb) if t.available else None
+    res["mask_png"] = png_b64((mask * 255).astype(np.uint8))
+    res["tissue_png"] = rgba_png(tis.overlay_rgba(labels))
+    res["probability_png"] = png_b64((prob * 255).astype(np.uint8))
     return res
 
 

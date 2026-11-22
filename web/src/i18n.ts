@@ -88,7 +88,7 @@ const id: Dict = {
 
   'try.h': 'Coba di <em>foto Anda</em>.',
   'try.lead':
-    'Seluruh pemrosesan terjadi di komputer ini. Pilih foto, beri skala, dan lihat kontur serta ukurannya. Simpan sebagai kasus untuk melihat tren penyembuhan.',
+    'Seluruh pemrosesan terjadi di komputer ini. Unggah satu foto: garis tepi, ukuran, jaringan, jenis luka, pilihan tutup primer, graft, atau flap, lengkap dengan gambar rencana dan tampilan 3D, terisi sendiri. Simpan sebagai kasus untuk melihat tren penyembuhan.',
   'try.drop': 'Letakkan foto di sini, atau pilih berkas',
   'try.samples': 'Atau pakai foto contoh',
   'try.model': 'Model',
@@ -128,7 +128,7 @@ const id: Dict = {
   'try.ov.prob': 'Peta probabilitas',
   'try.ov.photo': 'Foto asli',
   'try.disclaimer':
-    'Hasil adalah usulan dari foto dua dimensi. Periksa kontur sebelum dipakai, dan jangan memutuskan keganasan dari alat ini.',
+    'Hasil adalah usulan dari foto dua dimensi. Periksa garis tepi (bisa diperbaiki dengan kuas) sebelum dipakai, dan jangan memutuskan keganasan atau tindakan operasi dari alat ini saja.',
 
   'foot.by': 'Dibuat oleh Muhammad Allam Rafi dan Cindy Rizky Afrilia, Universitas Indonesia dan Universitas Kristen Krida Wacana.',
   'foot.lic':
@@ -223,7 +223,7 @@ const en: Dict = {
 
   'try.h': 'Try it on <em>your photo</em>.',
   'try.lead':
-    'All processing happens on this computer. Pick a photo, give it a scale, and see the contour and size. Save it as a case to see the healing trend.',
+    'All processing happens on this computer. Upload one photo and get the outline, size, tissue, wound type, the choice between primary closure, graft and flap, the plan drawn on your picture and a 3D view, all filled in for you. Save it as a case to see the healing trend.',
   'try.drop': 'Drop a photo here, or choose a file',
   'try.samples': 'Or use a sample photo',
   'try.model': 'Model',
@@ -263,7 +263,7 @@ const en: Dict = {
   'try.ov.prob': 'Probability map',
   'try.ov.photo': 'Original',
   'try.disclaimer':
-    'Results are suggestions from a two dimensional photo. Check the contour before using it, and do not decide malignancy with this tool.',
+    'Results are suggestions from a two dimensional photo. Check the outline (you can correct it with a brush) before using it, and do not decide malignancy or an operation from this tool alone.',
 
   'foot.by': 'Made by Muhammad Allam Rafi and Cindy Rizky Afrilia, Universitas Indonesia and Universitas Kristen Krida Wacana.',
   'foot.lic':

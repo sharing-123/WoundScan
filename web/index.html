@@ -141,78 +141,7 @@
           <h2 id="tryH" data-i="try.h"></h2>
           <p class="lead" data-i="try.lead"></p>
 
-          <div class="bench" id="bench">
-            <div class="stage-col">
-              <div class="dropzone" id="drop" tabindex="0" role="button" data-i-aria="try.drop">
-                <input type="file" id="file" accept="image/jpeg,image/png,image/webp" hidden />
-                <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 16V5m-4 4 4-4 4 4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                <span data-i="try.drop"></span>
-              </div>
-              <figure class="stage" id="stage" hidden>
-                <img id="photo" alt="" />
-                <canvas id="overlay"></canvas>
-                <figcaption id="hint" class="hint" hidden data-i="try.click2"></figcaption>
-              </figure>
-              <div class="samples">
-                <span data-i="try.samples"></span>
-                <div class="sample-row" id="samples"></div>
-              </div>
-            </div>
-
-            <form class="panel" id="form" autocomplete="off">
-              <div class="field">
-                <label for="model" data-i="try.model"></label>
-                <select id="model"></select>
-                <p class="help" id="modelHelp"></p>
-              </div>
-              <div class="field">
-                <label for="thr"><span data-i="try.threshold"></span> <output id="thrOut">0,50</output></label>
-                <input type="range" id="thr" min="0.2" max="0.8" step="0.05" value="0.5" />
-              </div>
-              <fieldset class="field">
-                <legend data-i="try.calib"></legend>
-                <label class="radio"><input type="radio" name="cal" value="none" checked /><span data-i="try.calib.none"></span></label>
-                <label class="radio"><input type="radio" name="cal" value="ref" /><span data-i="try.calib.ref"></span></label>
-                <label class="radio"><input type="radio" name="cal" value="dist" /><span data-i="try.calib.dist"></span></label>
-                <div class="sub" id="calRef" hidden>
-                  <label for="refmm" data-i="try.refmm"></label>
-                  <div class="inline">
-                    <input type="number" id="refmm" min="1" step="0.1" value="85.6" inputmode="decimal" />
-                    <button type="button" class="chip" id="cardBtn" data-i="try.card"></button>
-                  </div>
-                  <p class="help" id="refState"></p>
-                </div>
-                <div class="sub" id="calDist" hidden>
-                  <label for="dist" data-i="try.dist"></label>
-                  <input type="number" id="dist" min="5" step="1" value="30" inputmode="decimal" />
-                </div>
-              </fieldset>
-              <div class="field two">
-                <div><label for="hgt" data-i="try.height"></label><input type="number" id="hgt" min="30" max="250" inputmode="decimal" /></div>
-                <div><label for="wgt" data-i="try.weight"></label><input type="number" id="wgt" min="2" max="300" inputmode="decimal" /></div>
-              </div>
-              <button class="btn btn-solid btn-block" type="submit" id="run" disabled data-i="try.run"></button>
-              <p class="err" id="err" role="alert" hidden></p>
-            </form>
-
-            <div class="out" id="out" hidden>
-              <div class="seg" role="group" data-i-aria="try.overlay">
-                <button type="button" data-ov="contour" aria-pressed="true" data-i="try.ov.contour"></button>
-                <button type="button" data-ov="prob" aria-pressed="false" data-i="try.ov.prob"></button>
-                <button type="button" data-ov="photo" aria-pressed="false" data-i="try.ov.photo"></button>
-              </div>
-              <dl class="metrics" id="metrics"></dl>
-              <ul class="warn" id="warn"></ul>
-              <form class="save" id="saveForm">
-                <div class="field two">
-                  <div><label for="pcode" data-i="try.patient"></label><input id="pcode" maxlength="40" value="P-001" /></div>
-                  <div><label for="plabel" data-i="try.label"></label><input id="plabel" maxlength="80" /></div>
-                </div>
-                <button class="btn btn-ink btn-block" type="submit" data-i="try.save"></button>
-                <p class="ok" id="okMsg" role="status" hidden></p>
-              </form>
-            </div>
-          </div>
+          <div class="wb" id="wb"></div>
 
           <div class="cases" id="casesWrap">
             <div class="cases-head">

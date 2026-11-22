@@ -34,6 +34,13 @@ export interface Analysis {
   inference_ms: number;
   mask_png?: string;
   probability_png?: string;
+  tissue_png?: string;
+  tissue: { granulation: number; slough: number; necrosis: number; epithelium: number };
+  signs: Record<string, number | boolean | null>;
+  depth_class: string;
+  scale: { source: string; mm_per_pixel: number; uncertainty_percent: number; detail: Record<string, unknown> };
+  type: { probs: Record<string, number>; top: string; confidence: number; accuracy?: number; balanced_accuracy?: number; validated_on?: number; model?: string } | null;
+  models?: string[];
 }
 
 export interface CaseRow {
@@ -90,6 +97,7 @@ async function call(input: string, init?: RequestInit): Promise<Response> {
 
 export const api = {
   models: () => call('/api/models').then((r) => json<ModelInfo[]>(r)),
+  auto: (fd: FormData, signal?: AbortSignal) => call('/api/auto', { method: 'POST', body: fd, signal }).then((r) => json<Analysis>(r)),
   analyze: (fd: FormData, signal?: AbortSignal) => call('/api/analyze', { method: 'POST', body: fd, signal }).then((r) => json<Analysis>(r)),
   saveCase: (fd: FormData) => call('/api/cases', { method: 'POST', body: fd }).then((r) => json<{ id: string }>(r)),
   cases: (code?: string) => call('/api/cases' + (code ? `?patient_code=${encodeURIComponent(code)}` : '')).then((r) => json<CaseRow[]>(r)),
