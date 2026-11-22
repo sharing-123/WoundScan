@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 
 import cv2
@@ -80,19 +81,20 @@ def test_real_photo_finds_wound():
 
 
 def test_case_crud_and_trend():
+    code = "P-" + uuid.uuid4().hex[:8]  # unique, so a persistent database from an earlier run does not interfere
     ids = []
     for day, area in (("2026-01-01T09:00:00+00:00", 20.0), ("2026-01-08T09:00:00+00:00", 15.0), ("2026-01-15T09:00:00+00:00", 10.0)):
         an = {"calibrated": True, "area_cm2": area, "perimeter_mm": 80.0, "mm_per_pixel": 0.3, "model": "mobilenetv2-256"}
-        r = client.post("/api/cases", data={"patient_code": "P-001", "label": "heel", "captured_at": day, "analysis_json": json.dumps(an)},
+        r = client.post("/api/cases", data={"patient_code": code, "label": "heel", "captured_at": day, "analysis_json": json.dumps(an)},
                         files={"image": ("a.jpg", synth(), "image/jpeg")})
         assert r.status_code == 200, r.text
         ids.append(r.json()["id"])
-    assert len(client.get("/api/cases", params={"patient_code": "P-001"}).json()) == 3
-    t = client.get("/api/patients/P-001/trend").json()
+    assert len(client.get("/api/cases", params={"patient_code": code}).json()) == 3
+    t = client.get(f"/api/patients/{code}/trend").json()
     assert t["n"] == 3 and t["percent_reduction_from_first"] == 50.0
     assert t["rate_cm2_per_week"] == pytest.approx(-5.0, abs=0.01)
     assert client.get(f"/api/cases/{ids[0]}/thumb").headers["content-type"] == "image/jpeg"
-    assert "P-001" in client.get("/api/cases/export.csv").text
+    assert code in client.get("/api/cases/export.csv").text
     assert client.delete(f"/api/cases/{ids[0]}").status_code == 200
     assert client.get(f"/api/cases/{ids[0]}").status_code == 404
     assert client.post("/api/cases", data={"patient_code": "Budi Santoso", "analysis_json": "{}"}).status_code == 422

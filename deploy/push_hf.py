@@ -15,7 +15,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from huggingface_hub import HfApi, login, whoami
+try:
+    from huggingface_hub import HfApi, login, whoami
+except Exception as e:  # a half-installed package shows up as odd ModuleNotFoundError
+    sys.exit(f"huggingface_hub could not be imported ({e}).\nRepair it with:\n  python -m pip install --upgrade --force-reinstall huggingface_hub pyyaml filelock\nthen run this script again.")
 
 ROOT = Path(__file__).resolve().parents[1]
 KEEP = [
@@ -33,6 +36,13 @@ def main():
     ap.add_argument("--private", action="store_true")
     ap.add_argument("--database-url", default=os.environ.get("DATABASE_URL", ""))
     a = ap.parse_args()
+    if not a.database_url:  # the Neon CLI writes DATABASE_URL to .env.local; it is read here and never printed
+        envf = ROOT / ".env.local"
+        if envf.is_file():
+            for line in envf.read_text(encoding="utf8").splitlines():
+                if line.startswith("DATABASE_URL="):
+                    a.database_url = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    print("Using DATABASE_URL from .env.local (Neon).")
 
     if not os.environ.get("HF_TOKEN"):
         login()  # hidden prompt

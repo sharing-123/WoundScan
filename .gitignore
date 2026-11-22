@@ -26,3 +26,9 @@ web/dist/
 web/node_modules/
 web/npm-install.log
 server/data/*.db
+.neon
+.env.local
+
+.env
+.env.*
+!.env.example

@@ -19,6 +19,9 @@ COLS = "id TEXT PRIMARY KEY, workspace TEXT NOT NULL DEFAULT '', patient_code TE
 SCHEMA = f"CREATE TABLE IF NOT EXISTS cases ({COLS}{'BYTEA' if PG else 'BLOB'});\nCREATE INDEX IF NOT EXISTS idx_cases_patient ON cases(workspace, patient_code, captured_at);"
 
 
+_ready = False  # schema is created once per process, not on every request
+
+
 def _q(sql: str) -> str:
     return sql.replace("?", "%s") if PG else sql
 
@@ -28,10 +31,14 @@ def conn():
     if PG:
         import psycopg
         from psycopg.rows import dict_row
-        c = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
-        c.execute("ALTER TABLE IF EXISTS cases ADD COLUMN IF NOT EXISTS workspace TEXT NOT NULL DEFAULT ''")
-        for stmt in SCHEMA.split(";\n"):
-            c.execute(stmt)
+        c = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=15, prepare_threshold=None)
+        global _ready
+        if not _ready:
+            c.execute("ALTER TABLE IF EXISTS cases ADD COLUMN IF NOT EXISTS workspace TEXT NOT NULL DEFAULT ''")
+            for stmt in SCHEMA.split(";\n"):
+                c.execute(stmt)
+            c.commit()
+            _ready = True
     else:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         c = sqlite3.connect(DB_PATH)
