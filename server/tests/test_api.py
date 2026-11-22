@@ -18,6 +18,10 @@ ROOT = Path(__file__).resolve().parents[2]
 PHOTOS = sorted((ROOT / "webtest").glob("*.jpg"))
 
 
+HAS_MODEL = any(m["installed"] for m in client.get("/api/models").json())
+needs_model = pytest.mark.skipif(not HAS_MODEL, reason="model weights are not in the repository (non-commercial data); put them in models/")
+
+
 def jpeg(arr):
     ok, b = cv2.imencode(".jpg", arr[:, :, ::-1])
     return b.tobytes()
@@ -36,6 +40,7 @@ def test_health_and_models():
     assert any(m["default"] for m in ms)
 
 
+@needs_model
 @pytest.mark.parametrize("model", ["mobilenetv2-256", "resnet34-adapted-320"])
 def test_analyze_synthetic_with_reference(model):
     r = client.post("/api/analyze", files={"image": ("a.jpg", synth(), "image/jpeg")},
@@ -50,12 +55,14 @@ def test_analyze_synthetic_with_reference(model):
         assert j["tbsa_percent"] is not None and j["bsa_m2"] == pytest.approx((170 * 70 / 3600) ** 0.5, rel=1e-6)
 
 
+@needs_model
 def test_uncalibrated_has_no_cm2():
     j = client.post("/api/analyze", files={"image": ("a.jpg", synth(), "image/jpeg")}, data={"model": "mobilenetv2-256"}).json()
     assert j["calibrated"] is False and "area_cm2" not in j
     assert any("scale" in w.lower() for w in j["warnings"])
 
 
+@needs_model
 def test_rejects_bad_inputs():
     assert client.post("/api/analyze", files={"image": ("a.txt", b"not an image", "text/plain")}).status_code == 400
     assert client.post("/api/analyze", files={"image": ("a.jpg", synth(), "image/jpeg")}, data={"threshold": "0.99"}).status_code == 422
@@ -94,6 +101,7 @@ def test_case_crud_and_trend():
 SAMPLE = ROOT / "web" / "public" / "samples" / "dfu_1.jpg"
 
 
+@needs_model
 def test_auto_returns_the_whole_case_from_one_photo():
     r = client.post("/api/auto", files={"image": ("w.jpg", SAMPLE.read_bytes(), "image/jpeg")})
     assert r.status_code == 200, r.text
@@ -109,6 +117,7 @@ def test_auto_returns_the_whole_case_from_one_photo():
         assert abs(sum(d["type"]["probs"].values()) - 1) < 1e-3
 
 
+@needs_model
 def test_auto_scale_override_wins_over_assumed_distance():
     r = client.post("/api/auto", files={"image": ("w.jpg", SAMPLE.read_bytes(), "image/jpeg")}, data={"distance_cm": "20", "f35_mm": "26"})
     d = r.json()

@@ -347,13 +347,14 @@ export function mountWorkbench() {
 
   async function paintAll(first: boolean) {
     if (!cs || !st || !anno) return;
-    const A = $<HTMLCanvasElement>('cvA');
+    const A = $<HTMLCanvasElement>('cvA'); if (!A) return;
     const { c, ctx } = makeCanvas(st);
     A.width = c.width; A.height = c.height;
     const ax = A.getContext('2d')!; ax.scale(c.width / st.W, c.height / st.H);
     if (first || !A.dataset.done) {
       A.dataset.done = '1';
-      await tween(1700, (p) => paintAnnotated(ax, st as Stage, anno as AnnoOpts, p));
+      const S = st, AN = anno;
+      await tween(1700, (p) => { if (st !== S || anno !== AN || !A.isConnected) return; paintAnnotated(ax, S, AN, p); });
     } else paintAnnotated(ax, st, anno, 1);
     void ctx;
   }
