@@ -107,12 +107,12 @@ body[data-tone='bone'] .mark svg {
 }
 .chapter .copy {
   pointer-events: auto;
-  width: min(33rem, 100%);
+  width: min(31rem, 100%);
   display: grid;
   gap: var(--s-6);
   align-self: flex-start;
   position: sticky;
-  top: 26vh;
+  top: 24vh;
 }
 .chapter .copy p:not(.fine):not(.lead) {
   color: var(--fg-2);
@@ -140,8 +140,9 @@ body[data-tone='bone'] .mark svg {
   pointer-events: none;
   background: linear-gradient(90deg, rgb(13 11 10 / 0.84) 0%, rgb(13 11 10 / 0.55) 38%, rgb(13 11 10 / 0) 64%);
 }
+/* hero copy is wider than a chapter column */
 .ch-hero .copy {
-  width: min(46rem, 100%);
+  width: min(42rem, 100%);
   gap: var(--s-6);
   position: relative;
   top: auto;
@@ -223,6 +224,12 @@ body[data-tone='bone'] .mark svg {
   }
   .chapter {
     padding-block: 5rem 9vh;
+    justify-content: flex-start;
+  }
+  .chapter .copy,
+  .ch-hero .copy {
+    width: 100%;
+    max-width: 34rem;
   }
   .chapter .copy {
     padding: var(--s-6) 0 0;
@@ -354,5 +361,29 @@ body:not(.ready) .cue {
 @media (max-width: 760px) {
   .cue {
     display: none;
+  }
+}
+
+/* hero headline scales with the screen so it never swallows the 3D subject */
+.ch-hero .display {
+  font-size: clamp(2.3rem, 4.5vw, 4.9rem);
+}
+@media (min-width: 761px) {
+  .chapter .copy {
+    width: min(31rem, 42vw);
+  }
+  .ch-hero .copy {
+    width: min(42rem, 54vw);
+  }
+}
+@media (min-width: 761px) and (max-height: 780px) {
+  .ch-hero {
+    padding-bottom: 7vh;
+  }
+  .ch-hero .copy {
+    gap: var(--s-4);
+  }
+  .ch-hero .lead {
+    font-size: 1rem;
   }
 }

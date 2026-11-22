@@ -311,11 +311,11 @@ export function applyLang(l: Lang) {
 }
 
 export function initLang() {
-  let l: Lang = 'id';
+  // English by default; the ID button translates the whole page and the choice is remembered
+  let l: Lang = 'en';
   try {
     const s = localStorage.getItem('ws-lang');
     if (s === 'en' || s === 'id') l = s;
-    else if (navigator.language && !navigator.language.toLowerCase().startsWith('id')) l = 'en';
   } catch {
     /* ignore */
   }

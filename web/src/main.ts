@@ -51,6 +51,9 @@ function measure() {
     return { top: r.top + base, height: r.height };
   });
   world.setChapters(chapters);
+  const copy = story.querySelector<HTMLElement>('.ch-right .copy');
+  const chapter = copy?.closest<HTMLElement>('.chapter');
+  if (copy && chapter) world.setLayout(copy.getBoundingClientRect().width, parseFloat(getComputedStyle(chapter).paddingLeft) || 64);
 }
 
 gsap.ticker.add((time) => lenis.raf(time * 1000));
@@ -83,15 +86,26 @@ import('./world')
     document.body.classList.add('no-webgl', 'ready');
   });
 
-// the paper sheet takes over: switch header tone and stop drawing the world while it is hidden
-new IntersectionObserver(
-  ([e]) => {
-    const covered = e.boundingClientRect.top <= 68;
-    document.body.dataset.tone = covered ? 'bone' : 'night';
-    document.documentElement.style.setProperty('scrollbar-color', covered ? '#51463d #ece6da' : '#6b5f54 #0d0b0a');
-  },
-  { threshold: [0, 0.001, 0.02, 0.5, 1], rootMargin: '-68px 0px 0px 0px' },
-).observe(sheet);
+// the paper sheet takes over: switch the header tone when its top reaches the header (a scroll check, not an
+// IntersectionObserver, so jumps and anchor links can never leave the header in the wrong tone)
+let sheetTop = 0;
+let tone = '';
+function setTone(scroll: number) {
+  const next = scroll >= sheetTop - 68 ? 'bone' : 'night';
+  if (next === tone) return;
+  tone = next;
+  document.body.dataset.tone = next;
+  document.documentElement.style.setProperty('scrollbar-color', next === 'bone' ? '#51463d #ece6da' : '#6b5f54 #0d0b0a');
+}
+function measureSheet() {
+  sheetTop = sheet.getBoundingClientRect().top + window.scrollY;
+  setTone(window.scrollY);
+}
+measureSheet();
+addEventListener('resize', measureSheet);
+addEventListener('load', measureSheet);
+document.fonts?.ready.then(measureSheet);
+lenis.on('scroll', ({ scroll }: { scroll: number }) => setTone(scroll));
 
 // ---------- text choreography: one authored motion, lines rise from a mask ----------
 function reveal() {

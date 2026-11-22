@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>WoundScan: ukur luka dari satu foto</title>
-  <meta name="description" content="WoundScan mengukur luas luka dari satu foto, di perangkat Anda: segmentasi, skala, persen luas tubuh, dan geometri rencana rekonstruksi. Alat riset." />
+  <title>WoundScan: measure a wound from one photo</title>
+  <meta name="description" content="WoundScan measures wound area from a single photo, on your own device: segmentation, scale, percent body surface area and reconstruction plan geometry. A research tool." />
   <meta name="theme-color" content="#0d0b0a" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </head>
 <body data-tone="night">
-  <a class="skip" href="#coba" data-i="nav.cta">Analisis foto</a>
+  <a class="skip" href="#try" data-i="nav.cta">Analyse a photo</a>
   <canvas id="world" aria-hidden="true"></canvas>
   <div id="tags" class="tags" aria-hidden="true"></div>
 
@@ -21,17 +21,17 @@
       </svg>
       <span>WoundScan</span>
     </a>
-    <nav class="links" aria-label="Utama">
-      <a href="#layers" data-i="nav.how">Cara kerja</a>
-      <a href="#bukti" data-i="nav.evidence">Bukti</a>
-      <a href="#coba" data-i="nav.try">Coba</a>
+    <nav class="links" aria-label="Main">
+      <a href="#layers" data-i="nav.how">How it works</a>
+      <a href="#evidence" data-i="nav.evidence">Evidence</a>
+      <a href="#try" data-i="nav.try">Try it</a>
     </nav>
     <div class="tools">
-      <div class="lang" role="group" aria-label="Bahasa / Language">
-        <button type="button" data-lang="id" aria-pressed="true">ID</button>
-        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="id" aria-pressed="false">ID</button>
       </div>
-      <a class="btn btn-solid btn-sm" href="#coba" data-i="nav.cta">Analisis foto</a>
+      <a class="btn btn-solid btn-sm" href="#try" data-i="nav.cta">Analyse a photo</a>
     </div>
   </header>
 
@@ -49,12 +49,12 @@
     <section id="story" class="story" aria-label="WoundScan">
       <article class="chapter ch-hero" data-ch="hero" style="--vh:112">
         <div class="copy">
-          <h1 class="display" id="heroTitle" data-i="hero.h1">Luka diukur dari satu foto. Di perangkat Anda.</h1>
+          <h1 class="display" id="heroTitle" data-i="hero.h1">Measure a wound from one photo. On your own device.</h1>
           <p class="lead" data-i="hero.lead"></p>
           <div class="cta">
-            <a class="btn btn-solid" href="#coba"><span data-i="hero.cta1">Coba dengan foto sendiri</span>
+            <a class="btn btn-solid" href="#try"><span data-i="hero.cta1">Try it with your own photo</span>
               <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4 10h11m-4-5 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg></a>
-            <a class="btn btn-quiet" href="#layers" data-i="hero.cta2">Lihat cara kerja</a>
+            <a class="btn btn-quiet" href="#layers" data-i="hero.cta2">See how it works</a>
           </div>
           <p class="fine" data-i="hero.note"></p>
         </div>
@@ -107,18 +107,18 @@
     </section>
 
     <div class="sheet" id="sheet">
-      <section class="evidence" id="bukti" aria-labelledby="evH">
+      <section class="evidence" id="evidence" aria-labelledby="evH">
         <div class="wrap">
           <h2 id="evH" data-i="ev.h"></h2>
           <p class="lead" data-i="ev.lead"></p>
 
           <div class="ev-grid">
-            <figure class="plot" id="evFig" aria-label="Dice per foto">
+            <figure class="plot" id="evFig" aria-label="Dice per photograph">
               <div class="plot-head">
                 <h3 data-i="ev.t2"></h3>
                 <p data-i="ev.t2.p"></p>
               </div>
-              <svg id="evSvg" role="img" aria-label="Dice per foto, 38 foto"></svg>
+              <svg id="evSvg" role="img" aria-label="Dice per photograph, 38 photographs"></svg>
               <figcaption id="evCap"></figcaption>
             </figure>
             <div class="ev-side">
@@ -136,7 +136,7 @@
         </div>
       </section>
 
-      <section class="try" id="coba" aria-labelledby="tryH">
+      <section class="try" id="try" aria-labelledby="tryH">
         <div class="wrap">
           <h2 id="tryH" data-i="try.h"></h2>
           <p class="lead" data-i="try.lead"></p>

@@ -65,10 +65,10 @@ export class Tags {
   }
 
   /** vis: id -> 0..1 visibility from the chapter choreography */
-  update(camera: THREE.Camera, w: number, h: number, vis: Record<string, number>, offsetX: number, offsetY: number) {
+  update(camera: THREE.Camera, w: number, h: number, vis: Record<string, number>, offsetX: number, offsetY: number, snap = false) {
     for (const t of this.live) {
       const k = vis[t.def.id] ?? 0;
-      t.vis += (k - t.vis) * 0.2;
+      t.vis = snap ? k : t.vis + (k - t.vis) * 0.2;
       if (t.vis < 0.01) {
         if (t.el.style.opacity !== '0') t.el.style.opacity = '0';
         continue;

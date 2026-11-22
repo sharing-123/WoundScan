@@ -21,17 +21,18 @@ export interface Key {
   pulseR: number;
   explode: number;
   beam: number;
+  span: number; // width of the subject as a fraction of the screen at aspect 1.78
 }
 
 /* One key per chapter, in DOM order: hero, layers, scan, measure, plan, body, private. */
 export const KEYS: Key[] = [
-  { cam: [13.5, 8.2, 17.2], tgt: [0, -1.6, 0], fov: 30, shiftX: 0.27, cut: 5, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 1, tile: 0, body: 0, lens: 1, lensX: 0, lensY: 2.6, pulse: 0, pulseR: 8, explode: 0, beam: 1.0 },
-  { cam: [1.2, -0.2, 25.5], tgt: [0, -3.0, 0], fov: 30, shiftX: -0.2, cut: 0.15, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 1, tile: 0, body: 0, lens: 0, lensX: -5, lensY: 3.4, pulse: 0, pulseR: 8, explode: 1.15, beam: 0.55 },
-  { cam: [10.5, 17.8, 14.6], tgt: [0, -0.7, 0], fov: 28, shiftX: 0.22, cut: 5, outline: 1, doubt: 0.85, iso: 1, mask: 0.5, ruler: 0, block: 1, tile: 0, body: 0, lens: 1, lensX: 0, lensY: 1.5, pulse: 0, pulseR: 8, explode: 0, beam: 0.25 },
-  { cam: [-7.8, 20.0, 13.8], tgt: [0, -0.2, 0.6], fov: 27, shiftX: -0.24, cut: 5, outline: 1, doubt: 0.35, iso: 1, mask: 0.28, ruler: 1, block: 1, tile: 0, body: 0, lens: 0, lensX: 5, lensY: 3, pulse: 0, pulseR: 8, explode: 0, beam: 0.0 },
-  { cam: [3.0, 18.5, 9.5], tgt: [0, 0, 0.2], fov: 28, shiftX: 0.2, cut: 5, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 0, tile: 1, body: 0, lens: 0, lensX: 0, lensY: 3.2, pulse: 0, pulseR: 8, explode: 0, beam: 0.0 },
-  { cam: [0, 1.6, 31], tgt: [0, 1.6, 0], fov: 28, shiftX: -0.22, cut: 5, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 0, tile: 0, body: 1, lens: 0, lensX: 0, lensY: 3, pulse: 0, pulseR: 8, explode: 0, beam: 0.0 },
-  { cam: [0.1, 25, 12], tgt: [0, -3.4, 0], fov: 32, shiftX: 0.2, cut: 5, outline: 0.55, doubt: 0, iso: 0.4, mask: 0, ruler: 0, block: 1, tile: 0, body: 0, lens: 1, lensX: 0, lensY: 1.8, pulse: 1, pulseR: 4.5, explode: 0, beam: 0.45 },
+  { cam: [13.5, 8.2, 17.2], tgt: [0, -1.6, 0], fov: 30, shiftX: 0.27, cut: 5, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 1, tile: 0, body: 0, lens: 1, lensX: 0, lensY: 2.6, pulse: 0, pulseR: 8, explode: 0, beam: 1.0, span: 0.6 },
+  { cam: [1.2, -0.2, 25.5], tgt: [0, -3.0, 0], fov: 30, shiftX: -0.2, cut: 0.15, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 1, tile: 0, body: 0, lens: 0, lensX: -5, lensY: 3.4, pulse: 0, pulseR: 8, explode: 1.15, beam: 0.55, span: 0.5 },
+  { cam: [10.5, 17.8, 14.6], tgt: [0, -0.7, 0], fov: 28, shiftX: 0.22, cut: 5, outline: 1, doubt: 0.85, iso: 1, mask: 0.5, ruler: 0, block: 1, tile: 0, body: 0, lens: 1, lensX: 0, lensY: 1.5, pulse: 0, pulseR: 8, explode: 0, beam: 0.25, span: 0.55 },
+  { cam: [-7.8, 20.0, 13.8], tgt: [0, -0.2, 0.6], fov: 27, shiftX: -0.24, cut: 5, outline: 1, doubt: 0.35, iso: 1, mask: 0.28, ruler: 1, block: 1, tile: 0, body: 0, lens: 0, lensX: 5, lensY: 3, pulse: 0, pulseR: 8, explode: 0, beam: 0.0, span: 0.56 },
+  { cam: [3.0, 18.5, 9.5], tgt: [0, 0, 0.2], fov: 28, shiftX: 0.2, cut: 5, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 0, tile: 1, body: 0, lens: 0, lensX: 0, lensY: 3.2, pulse: 0, pulseR: 8, explode: 0, beam: 0.0, span: 0.5 },
+  { cam: [0, 1.6, 31], tgt: [0, 1.6, 0], fov: 28, shiftX: -0.22, cut: 5, outline: 0, doubt: 0, iso: 0, mask: 0, ruler: 0, block: 0, tile: 0, body: 1, lens: 0, lensX: 0, lensY: 3, pulse: 0, pulseR: 8, explode: 0, beam: 0.0, span: 0.3 },
+  { cam: [0.1, 25, 12], tgt: [0, -3.4, 0], fov: 32, shiftX: 0.2, cut: 5, outline: 0.55, doubt: 0, iso: 0.4, mask: 0, ruler: 0, block: 1, tile: 0, body: 0, lens: 1, lensX: 0, lensY: 1.8, pulse: 1, pulseR: 4.5, explode: 0, beam: 0.45, span: 0.5 },
 ];
 
 export interface Chapter {
