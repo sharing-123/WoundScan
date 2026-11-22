@@ -32,6 +32,7 @@ export function mountWorkbench() {
         <span class="dz-t" data-k="drop"></span>
         <span class="dz-s" data-k="dropsub"></span>
       </div>
+      <div class="cam-row"><button type="button" class="btn btn-ink" id="camBtn" data-k="camera"></button><input type="file" id="camFile" accept="image/*" capture="environment" hidden /></div>
       <div class="wb-side">
         <div class="samples"><span data-k="samples"></span><div class="sample-row" id="samples"></div></div>
         <details class="wb-opt"><summary data-k="optional"></summary>
@@ -40,6 +41,12 @@ export function mountWorkbench() {
           <p class="help" data-k="optionalHelp"></p>
         </details>
       </div>
+    </div>
+    <div class="cam" id="cam" hidden role="dialog" aria-modal="true">
+      <video id="camVideo" playsinline muted autoplay></video>
+      <div class="cam-guide"></div>
+      <p class="cam-tip" data-k="camTip"></p>
+      <div class="cam-bar"><button type="button" class="chip" id="camClose" data-k="close"></button><button type="button" class="cam-shot" id="camShot" aria-label="capture"></button><button type="button" class="chip" id="camFlip" data-k="flip"></button></div>
     </div>
     <div class="wb-run" id="wbRun" hidden>
       <figure class="scan"><img id="scanImg" alt="" /><i class="scanline"></i><figcaption id="scanCap"></figcaption></figure>
@@ -57,6 +64,9 @@ export function mountWorkbench() {
     drop: ['Drop a wound photo here, or choose a file', 'Letakkan foto luka di sini, atau pilih berkas'],
     dropsub: ['One photo is enough. Everything below is filled in for you.', 'Satu foto sudah cukup. Semua isian di bawah terisi otomatis.'],
     samples: ['Or try a sample photo', 'Atau coba foto contoh'],
+    camera: ['Use the camera', 'Pakai kamera'], close: ['Close', 'Tutup'], flip: ['Flip', 'Balik'],
+    camTip: ['Hold the phone parallel to the wound, about 20 to 30 cm away, with a ruler or an ID card beside it. Even light, no flash glare.', 'Pegang ponsel sejajar dengan luka, sekitar 20 sampai 30 cm, dengan penggaris atau kartu ID di sampingnya. Cahaya merata, tanpa silau flash.'],
+    camDenied: ['The camera could not be opened here. Use the phone camera instead.', 'Kamera tidak dapat dibuka di sini. Pakai kamera ponsel.'],
     optional: ['Optional: height and weight (for body-surface percentage and donor area)', 'Opsional: tinggi dan berat badan (untuk persen luas tubuh dan luas donor)'],
     height: ['Height (cm)', 'Tinggi (cm)'], weight: ['Weight (kg)', 'Berat (kg)'],
     optionalHelp: ['Leave blank if unknown. A photo that includes a ruler or an ID-1 card beside the wound gives a true scale.', 'Kosongkan bila tidak tahu. Foto dengan penggaris atau kartu ID-1 di samping luka memberi skala sebenarnya.'],
@@ -96,6 +106,33 @@ export function mountWorkbench() {
   ['dragenter', 'dragover'].forEach((n) => drop.addEventListener(n, (e) => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach((n) => drop.addEventListener(n, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
   drop.addEventListener('drop', (e) => { const f = (e as DragEvent).dataTransfer?.files?.[0]; if (f) analyse(f); });
+
+
+  /* ---------- camera ---------- */
+  const camBox = $('cam'), camVideo = $<HTMLVideoElement>('camVideo'), camFile = $<HTMLInputElement>('camFile');
+  let camStream: MediaStream | null = null, facing: 'environment' | 'user' = 'environment';
+  async function startCam() {
+    stopCam();
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false });
+    camVideo.srcObject = camStream; await camVideo.play().catch(() => 0);
+  }
+  function stopCam() { camStream?.getTracks().forEach((t) => t.stop()); camStream = null; camVideo.srcObject = null; }
+  $('camBtn').onclick = async () => {
+    showErr('');
+    if (!navigator.mediaDevices?.getUserMedia) { camFile.click(); return; }
+    try { camBox.hidden = false; document.body.style.overflow = 'hidden'; await startCam(); }
+    catch { camBox.hidden = true; document.body.style.overflow = ''; showErr(T(...S.camDenied)); camFile.click(); }
+  };
+  const closeCam = () => { stopCam(); camBox.hidden = true; document.body.style.overflow = ''; };
+  $('camClose').onclick = closeCam;
+  $('camFlip').onclick = async () => { facing = facing === 'environment' ? 'user' : 'environment'; try { await startCam(); } catch { closeCam(); } };
+  $('camShot').onclick = () => {
+    const w = camVideo.videoWidth, h = camVideo.videoHeight; if (!w || !h) return;
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d')!.drawImage(camVideo, 0, 0, w, h);
+    c.toBlob((b) => { if (!b) return; closeCam(); analyse(new File([b], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })); }, 'image/jpeg', 0.93);
+  };
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !camBox.hidden) closeCam(); });
+  camFile.addEventListener('change', () => { const f = camFile.files?.[0]; if (f) analyse(f); });
 
   /* ---------- the run ---------- */
   const STEP_TXT: [string, string][] = [
@@ -173,7 +210,8 @@ export function mountWorkbench() {
       <header class="res-head">
         <div class="rh-main">
           <p class="eyebrow">${T('Wound type read from the photo', 'Jenis luka terbaca dari foto')}${c.typeAuto ? '' : ` · ${T('set by you', 'dipilih Anda')}`}</p>
-          <h3>${esc(typeName(c.type))}</h3>
+          <h3>${esc(pick(c.dx.name))}</h3>
+          <p class="dx"><strong>${esc(pick(c.dx.grade))}</strong> · ${esc(pick(c.dx.one))}</p>
           <p class="rh-sub">${!A.type ? T('No wound-type model is installed on this machine, so choose the type below. Everything else still runs.', 'Model jenis luka tidak terpasang di komputer ini, jadi pilih jenis di bawah. Bagian lain tetap berjalan.') : ''}${A.type && c.typeAuto ? T(`The model leans this way at ${conf}%. `, `Model condong ke arah ini sebesar ${conf}%. `) : ''}${A.type && acc != null ? T(`On held-out photos it names the right type about ${acc}% of the time across six types, so treat it as a first guess and change it below if you know better.`, `Pada foto uji ia menebak jenis yang tepat sekitar ${acc}% dari enam jenis, jadi anggap ini tebakan awal dan ubah di bawah bila Anda lebih tahu.`) : ''}</p>
           <div class="chips" role="group" aria-label="${T('Wound type', 'Jenis luka')}">${alt}</div>
           <details class="rh-reg"><summary>${T('Site', 'Lokasi')}: ${esc(pick(REGIONS[c.region].name))}${c.regionAuto ? T(' (typical for this type, change if different)', ' (umum untuk jenis ini, ubah bila berbeda)') : ''}</summary><div class="chips">${reg}</div></details>
@@ -214,10 +252,10 @@ export function mountWorkbench() {
         <div class="m"><span>${T('Area', 'Luas')}</span><b>${num(c.areaCm2, c.areaCm2 < 10 ? 2 : 1)}<small>cm²</small></b></div>
         <div class="m"><span>${T('Perimeter', 'Keliling')}</span><b>${num(per, 1)}<small>cm</small></b></div>
         ${c.tbsaPct != null ? `<div class="m"><span>${T('Body surface', 'Luas tubuh')}</span><b>${num(c.tbsaPct, 2)}<small>%</small></b></div>` : ''}
-        <div class="m"><span>${T('Depth', 'Kedalaman')}</span><b class="txt">${esc(T(...dm[c.depthClass] || dm.indeterminate))}</b></div>
+        <div class="m big"><span>${T('Depth (estimate)', 'Kedalaman (perkiraan)')}</span><b>${num(c.depthEst.mm / 10, 1)}<small>cm</small></b><em>${T('range', 'kisaran')} ${num(c.depthEst.loMm / 10, 1)} to ${num(c.depthEst.hiMm / 10, 1)} cm · ${esc(T(...dm[c.depthClass] || dm.indeterminate))}</em></div>
       </div>
       ${edited ? `<p class="mnote">${T('Outline corrected by you. The tissue colours still follow the original outline.', 'Garis tepi dikoreksi oleh Anda. Warna jaringan masih mengikuti garis semula.')}</p>` : ''}
-      <p class="mnote">${T('Depth in centimetres cannot be measured from a flat photo. The category above comes from the colour of the bed.', 'Kedalaman dalam sentimeter tidak dapat diukur dari foto datar. Kategori di atas berasal dari warna dasar luka.')}</p>
+      <p class="mnote">${T('A flat photo cannot measure depth. This figure is estimated from the colour of the bed, the size of the wound, its type and the site; confirm it with a sterile probe at the bedside.', 'Foto datar tidak dapat mengukur kedalaman. Angka ini diperkirakan dari warna dasar luka, ukuran, jenis, dan lokasi; pastikan dengan probe steril di samping tempat tidur.')}</p>
       <div class="tissue"><div class="tbar">${bar}</div><div class="tleg">${leg}</div></div>
       <ul class="signs">${signs.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>
       <div class="scalebox ${sc.source === 'assumed_distance' ? 'warn' : ''}">
@@ -293,7 +331,7 @@ export function mountWorkbench() {
         ${donorHtml(P)}
         <div class="plan-act"><button type="button" class="btn btn-ink btn-sm" id="dlPlate">${T('Download the plate (PNG)', 'Unduh lembar rencana (PNG)')}</button><p class="fine">${T('Illustrative plan for discussion with the surgeon. Not an operative order.', 'Rencana ilustratif untuk diskusi dengan operator. Bukan perintah operasi.')}</p></div>
       </section>
-      <section class="pane" data-pane="three" ${tab === 'three' ? '' : 'hidden'}><div class="v3" id="v3host"></div>
+      <section class="pane" data-pane="three" ${tab === 'three' ? '' : 'hidden'}><div id="v3host"></div>
         <p class="fine">${T('Built from your photo: the skin, the wound dent and every piece of the plan come from this picture. The depth of the dent is illustrative.', 'Dibangun dari foto Anda: kulit, cekungan luka, dan setiap bagian rencana berasal dari gambar ini. Kedalaman cekungan bersifat ilustratif.')}</p></section>
       <section class="pane" data-pane="recs" ${tab === 'recs' ? '' : 'hidden'}>
         <div class="recs">${c.sections.map((sx, i) => `<details class="rec ${sx.tone || ''}" ${i < 2 || sx.tone === 'alert' ? 'open' : ''}><summary>${esc(pick(sx.title))}</summary><ul>${sx.items.map((it) => `<li>${esc(pick(it))}</li>`).join('')}</ul></details>`).join('')}</div>

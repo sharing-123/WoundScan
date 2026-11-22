@@ -12,6 +12,7 @@ import { edt, gauss, type P2 } from './geom';
 import { marking } from './draw';
 import { kFor } from './plate';
 import { lang } from '../i18n';
+import { buildCutaway, layerLegend, stageAt } from './cutaway';
 import { pick } from '../clinic/kb';
 
 const T = (en: string, id: string) => (lang() === 'id' ? id : en);
@@ -117,9 +118,13 @@ export function mountViewer(host: HTMLElement, st: Stage, cs: Case): Viewer {
   const W = st.W, H = st.H, Hu = (WU * H) / W;
   const ucm = WU / (W * st.cmPerPx); // world units per cm
   host.innerHTML = '';
+  const wrap = document.createElement('div'); wrap.className = 'v3-wrap';
+  const stageEl = document.createElement('div'); stageEl.className = 'v3';
+  const info = document.createElement('aside'); info.className = 'v3-info';
+  wrap.append(stageEl, info); host.append(wrap);
   const canvas = document.createElement('canvas');
   canvas.className = 'v3-canvas';
-  host.append(canvas);
+  stageEl.append(canvas);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -302,22 +307,28 @@ export function mountViewer(host: HTMLElement, st: Stage, cs: Case): Viewer {
     const va = new THREE.Vector3(A.x, A.y, 0.03), vb = new THREE.Vector3(B.x, B.y, 0.03);
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([va, vb]), new THREE.LineBasicMaterial({ color: '#f2b632', transparent: true, opacity: 0.95, depthTest: false }));
     line.renderOrder = 10; sheet.add(line);
-    const el = document.createElement('div'); el.className = 'v3-tag'; el.textContent = text; host.append(el);
+    const el = document.createElement('div'); el.className = 'v3-tag'; el.textContent = text; stageEl.append(el);
     meas.push({ a: va, b: vb, label: el, line });
   };
   const l1 = Math.hypot(rect[1][0] - rect[0][0], rect[1][1] - rect[0][1]) * st.cmPerPx, l2 = Math.hypot(rect[2][0] - rect[1][0], rect[2][1] - rect[1][1]) * st.cmPerPx;
   mkMeas(rect[0], rect[1], `${l1.toFixed(1)} cm`);
   mkMeas(rect[1], rect[2], `${l2.toFixed(1)} cm`);
 
-  /* ---- controls overlay ---- */
+  /* ---- cutaway of the layers and the info panel ---- */
+  const cut = buildCutaway(cs);
+  cut.group.visible = false; scene.add(cut.group);
+  const Wn = cut.tl.win, tls = cut.tl;
+  const win = (k: string, d: [number, number]): [number, number] => Wn[k] || d;
+  const mmTxt = (v: number) => (lang() === 'id' ? v.toFixed(1).replace('.', ',') : v.toFixed(1));
+  const layerName = cs.depthEst.layer === 'dermis' ? T('dermis', 'dermis') : cs.depthEst.layer === 'subcutis' ? T('subcutaneous fat', 'lemak subkutan') : T('fascia or deeper', 'fasia atau lebih dalam');
+
   const ui = document.createElement('div'); ui.className = 'v3-ui';
-  const steps = cs.plan.steps;
   ui.innerHTML = `
-    <div class="v3-cap"><span class="v3-n"></span><span class="v3-t"></span></div>
+    <div class="v3-mode seg" role="group"><button type="button" data-m="surface" aria-pressed="true">${T('Surface', 'Permukaan')}</button><button type="button" data-m="cut" aria-pressed="false">${T('Layers cutaway', 'Potongan lapisan')}</button></div>
     <div class="v3-bar">
-      <button type="button" class="v3-play" aria-label="${T('Play', 'Putar')}"></button>
+      <button type="button" class="v3-play on" aria-label="${T('Play or pause', 'Putar atau jeda')}"></button>
       <input class="v3-scrub" type="range" min="0" max="1000" value="0" aria-label="${T('Operation progress', 'Kemajuan operasi')}" />
-      <button type="button" class="v3-b" data-a="reset">${T('Reset', 'Ulang')}</button>
+      <button type="button" class="v3-b" data-a="reset">${T('Restart', 'Ulang')}</button>
     </div>
     <div class="v3-side">
       <label><span>${T('Peel the skin', 'Kupas kulit')}</span><input class="v3-peel" type="range" min="0" max="1000" value="0" /></label>
@@ -325,31 +336,45 @@ export function mountViewer(host: HTMLElement, st: Stage, cs: Case): Viewer {
       <label class="v3-chk"><input class="v3-mk" type="checkbox" checked /><span>${T('Marking', 'Marking')}</span></label>
       <label class="v3-chk"><input class="v3-ms" type="checkbox" checked /><span>${T('Measurements', 'Ukuran')}</span></label>
     </div>
-    <p class="v3-hint">${T('Drag to turn. Scroll to zoom. Drag the skin to peel it back.', 'Seret untuk memutar. Gulir untuk zoom. Seret kulit untuk mengupasnya.')}</p>`;
-  host.append(ui);
+    <p class="v3-hint">${T('Drag to turn · scroll to zoom · the operation plays by itself', 'Seret untuk memutar · gulir untuk zoom · operasi berjalan sendiri')}</p>`;
+  stageEl.append(ui);
+  const dims = `${mmTxt(cs.geo.shape.rectLong * cs.geo.cmPerPx)} × ${mmTxt(cs.geo.shape.rectShort * cs.geo.cmPerPx)} cm`;
+  info.innerHTML = `
+    <p class="v3i-k">${T('This operation, from your photo', 'Operasi ini, dari foto Anda')}</p>
+    <h4>${pick(cs.plan.title)}</h4>
+    <dl class="v3i-facts">
+      <div><dt>${T('Wound', 'Luka')}</dt><dd>${pick(cs.dx.name)}</dd></div>
+      <div><dt>${T('Size', 'Ukuran')}</dt><dd>${dims}</dd></div>
+      <div><dt>${T('Depth (estimate)', 'Kedalaman (perkiraan)')}</dt><dd>${mmTxt(cs.depthEst.mm / 10)} cm · ${layerName}</dd></div>
+    </dl>
+    <ol class="v3i-steps">${tls.stages.map((sg, i) => `<li data-i="${i}"><button type="button"><span class="n">${i + 1}</span><span class="tx"><b>${pick(sg.title)}</b><span class="bd">${pick(sg.body)}</span></span></button></li>`).join('')}</ol>
+    <div class="v3i-legend">${layerLegend().map((l) => `<span><i style="background:${l.c}"></i>${l.t}</span>`).join('')}</div>`;
   const q = <E extends HTMLElement>(sel: string) => ui.querySelector(sel) as E;
   const scrub = q<HTMLInputElement>('.v3-scrub'), peel = q<HTMLInputElement>('.v3-peel'), ex = q<HTMLInputElement>('.v3-ex');
-  const playBtn = q<HTMLButtonElement>('.v3-play'), capN = q('.v3-n'), capT = q('.v3-t');
+  const playBtn = q<HTMLButtonElement>('.v3-play');
   const mkChk = q<HTMLInputElement>('.v3-mk'), msChk = q<HTMLInputElement>('.v3-ms');
+  const stepEls = [...info.querySelectorAll<HTMLElement>('.v3i-steps li')];
 
   /* ---- state ---- */
-  let tl = 0, peelV = 0, exV = 0, playing = false, dirty = true, alive = true;
+  let tl = 0, peelV = 0, exV = 0, playing = true, alive = true, mode: 'surface' | 'cut' = 'surface', hold = 0, interacted = false;
   const apply = () => {
     const t = tl;
+    const wc = win('cut', [0.15, 0.38]), wl = win('lift', [0.35, 0.5]), wm = win('move', [0.5, 0.7]), wh = win('harvest', [0.15, 0.3]), wp = win('place', [0.4, 0.62]);
+    const sk = Wn.skin || Wn.fix || [0.9, 1];
     pieces.forEach((pc) => {
       const r = pc.p.role, g = pc.g;
       if (r === 'excise' || r === 'slough') {
-        const e = seg(t, 0.22, 0.52);
+        const e = seg(t, wc[0], wc[1]);
         g.position.set(pc.pivot.x + 0.9 * e * (r === 'slough' ? 1 : 0.8), pc.pivot.y + 0.25 * e, 0.9 * Math.sin(Math.min(1, e * 1.4) * Math.PI * 0.5));
         g.rotation.set(0, 0, -0.35 * e); g.scale.setScalar(1 - 0.12 * e);
         pc.mesh.visible = e < 0.999;
       } else if (r === 'flap') {
-        const lf = seg(t, 0.4, 0.55), mvT = seg(t, 0.52, 0.8), drop = seg(t, 0.8, 0.92);
+        const lf = seg(t, wl[0], wl[1]), mvT = seg(t, wm[0], wm[1]), drop = seg(t, wm[1], wm[1] + 0.1);
         g.position.set(pc.pivot.x + pc.mv.x * mvT, pc.pivot.y + pc.mv.y * mvT, 0.55 * lf * (1 - drop));
         g.rotation.set(0, 0, pc.p.move?.rot ? -pc.p.move.rot * mvT : 0);
       } else if (r === 'graft') {
-        const appear = seg(t, 0.3, 0.42), flyT = seg(t, 0.5, 0.82), lay = seg(t, 0.82, 0.93);
-        const peelUp = 1 - seg(t, 0.42, 0.55);
+        const appear = seg(t, wh[0], wh[0] + 0.08), flyT = seg(t, wp[0], wp[1]), lay = seg(t, wp[1] - 0.05, wp[1] + 0.06);
+        const peelUp = 1 - seg(t, wh[0] + 0.08, wh[1]);
         g.visible = appear > 0.001;
         const rest = BED_Z + pc.th;
         g.position.set(pc.pivot.x + pc.startOff.x * (1 - flyT), pc.pivot.y + pc.startOff.y * (1 - flyT), rest + (0.5 * Math.sin(Math.PI * flyT) + 0.14 * peelUp) * (1 - lay) + 0.06 * (1 - lay) * (1 - flyT));
@@ -357,100 +382,99 @@ export function mountViewer(host: HTMLElement, st: Stage, cs: Case): Viewer {
         g.scale.setScalar(0.35 + 0.65 * appear);
       }
     });
-    // stitches grow in at the end
-    const st2 = seg(t, 0.9, 1);
-    stitches.forEach((m, i) => { const k = ease((st2 * 1.6 - i / Math.max(1, stitches.length) * 0.6)); m.scale.y = Math.max(0.001, k); });
-    // peel: page curl of the skin sheet, from the +x edge toward -x
-    const R = 0.42;
-    const front = WU / 2 - peelV * (WU * 1.02);
-    const p = pos.array as Float32Array;
+    const st2 = seg(t, sk[0], sk[1]);
+    stitches.forEach((m, i) => { const k = ease(st2 * 1.6 - (i / Math.max(1, stitches.length)) * 0.6); m.scale.y = Math.max(0.001, k); });
+    // peel: page curl of the skin sheet
+    const R = 0.42, front = WU / 2 - peelV * (WU * 1.02), p = pos.array as Float32Array;
     for (let i = 0; i < pos.count; i++) {
       const bx = base[i * 3], by = base[i * 3 + 1], bz = base[i * 3 + 2];
-      let x = bx, z = bz;
-      const d = bx - front;
-      if (peelV > 0.001 && d > 0) {
-        if (d <= R * Math.PI) { const a = d / R; x = front + R * Math.sin(a); z = bz + R * (1 - Math.cos(a)); }
-        else { x = front - (d - R * Math.PI); z = bz + 2 * R; }
-      }
+      let x = bx, z = bz; const d = bx - front;
+      if (peelV > 0.001 && d > 0) { if (d <= R * Math.PI) { const a2 = d / R; x = front + R * Math.sin(a2); z = bz + R * (1 - Math.cos(a2)); } else { x = front - (d - R * Math.PI); z = bz + 2 * R; } }
       p[i * 3] = x; p[i * 3 + 1] = by; p[i * 3 + 2] = z;
     }
     pos.needsUpdate = true; skinGeo.computeVertexNormals();
-    // explode
     skinGrp.position.z = 0.95 * exV; bedGrp.position.z = 0.38 * exV; musGrp.position.z = -0.25 * exV;
-    pieces.forEach((pc) => { /* pieces ride with the skin layer when it lifts */ pc.g.position.z += 0.95 * exV; });
+    pieces.forEach((pc) => { pc.g.position.z += 0.95 * exV; });
     sutureG.position.z = 0.95 * exV;
     wallMat.opacity = 1 - Math.min(1, exV * 4); walls.visible = wallMat.opacity > 0.02;
     table.position.y = -0.62 - 0.3 * exV; ring.position.y = -0.31 - 0.3 * exV;
-    uMarkAmt.value = mkChk.checked ? 1 - seg(t, 0.2, 0.4) * (cs.plan.pieces.length ? 0.85 : 0) : 0;
-    meas.forEach((m) => { m.label.style.display = msChk.checked ? '' : 'none'; m.line.visible = msChk.checked && t < 0.5; });
-    // caption
-    const n = Math.max(1, steps.length), si = Math.min(n - 1, Math.floor(t * n * 0.999));
-    capN.textContent = String(si + 1).padStart(2, '0');
-    capT.textContent = steps[si] ? pick(steps[si]) : '';
+    const markEnd = Math.min(wc[0], wh[0], 0.2);
+    uMarkAmt.value = mkChk.checked ? 1 - seg(t, markEnd, markEnd + 0.1) : 0;
+    meas.forEach((m) => { m.label.style.display = msChk.checked && mode === 'surface' ? '' : 'none'; m.line.visible = msChk.checked && t < wc[1]; });
+    cut.update(t);
     scrub.value = String(Math.round(t * 1000));
-    dirty = true;
+    const cur = stageAt(tls, t);
+    stepEls.forEach((li, i) => li.classList.toggle('on', tls.stages[i] === cur));
   };
-
-  scrub.addEventListener('input', () => { playing = false; playBtn.classList.remove('on'); tl = Number(scrub.value) / 1000; apply(); });
-  peel.addEventListener('input', () => { peelV = Number(peel.value) / 1000; apply(); });
-  ex.addEventListener('input', () => { exV = Number(ex.value) / 1000; apply(); });
+  const setPlay = (v: boolean) => { playing = v; playBtn.classList.toggle('on', v); };
+  scrub.addEventListener('input', () => { setPlay(false); tl = Number(scrub.value) / 1000; apply(); });
+  peel.addEventListener('input', () => { peelV = Number(peel.value) / 1000; interacted = true; apply(); });
+  ex.addEventListener('input', () => { exV = Number(ex.value) / 1000; interacted = true; apply(); });
   mkChk.addEventListener('change', apply); msChk.addEventListener('change', apply);
-  playBtn.addEventListener('click', () => { playing = !playing; playBtn.classList.toggle('on', playing); if (playing && tl >= 0.999) tl = 0; });
-  q('[data-a="reset"]').addEventListener('click', () => { playing = false; playBtn.classList.remove('on'); tl = 0; peelV = 0; exV = 0; peel.value = '0'; ex.value = '0'; apply(); gsap.to(camera.position, { x: home.x, y: home.y, z: home.z, duration: 0.9, ease: 'power3.inOut', onUpdate: () => (dirty = true) }); });
+  playBtn.addEventListener('click', () => { setPlay(!playing); if (playing && tl >= 0.999) tl = 0; });
+  stepEls.forEach((li) => li.querySelector('button')!.addEventListener('click', () => { const sg = tls.stages[Number(li.dataset.i)]; setPlay(false); tl = Math.min(0.999, sg.t1 - 0.004); apply(); }));
 
-  // drag the skin to peel: horizontal drag over the sheet when the pointer starts on it
-  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-  let peeling = false, startX = 0, startPeel = 0;
-  canvas.addEventListener('pointerdown', (e) => {
-    if (!e.shiftKey && !e.altKey) return;
-    peeling = true; controls.enabled = false; startX = e.clientX; startPeel = peelV; canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener('pointermove', (e) => { if (!peeling) return; peelV = Math.max(0, Math.min(1, startPeel - (e.clientX - startX) / canvas.clientWidth * 1.6)); peel.value = String(Math.round(peelV * 1000)); apply(); });
-  canvas.addEventListener('pointerup', () => { peeling = false; controls.enabled = true; });
-  void ray; void ndc;
-
-  /* ---- loop ---- */
-  const home = new THREE.Vector3(0, 3, 4);
+  const homeS = new THREE.Vector3(0, 3, 4), homeC = new THREE.Vector3(0.5, 1.2, 6), tgtC = new THREE.Vector3(0, -0.55, 0);
   const fitHome = () => {
     const th = Math.tan((camera.fov * Math.PI) / 360), el = 0.95;
     const dW = (WU / 2) / (th * camera.aspect), dH = (Hu / 2) / th;
     const d = Math.max(dW, dH * 0.8) * 1.12;
-    home.set(0, d * Math.sin(el), d * Math.cos(el));
-    controls.minDistance = d * 0.3; controls.maxDistance = d * 2;
+    homeS.set(0, d * Math.sin(el), d * Math.cos(el));
+    const dc = Math.max((2.9) / (th * camera.aspect), 1.7 / th) * 1.2;
+    homeC.set(0.4, dc * 0.42, dc * 0.92);
+    if (mode === 'surface') { controls.minDistance = d * 0.3; controls.maxDistance = d * 2; } else { controls.minDistance = dc * 0.3; controls.maxDistance = dc * 2; }
   };
+  const setMode = (m: 'surface' | 'cut', animate = true) => {
+    mode = m; q('.v3-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String((b as HTMLElement).dataset.m === m)));
+    world.visible = m === 'surface'; table.visible = m === 'surface'; ring.visible = m === 'surface'; cut.group.visible = m === 'cut';
+    sutureG.visible = m === 'surface'; ui.querySelector<HTMLElement>('.v3-side')!.style.display = m === 'surface' ? '' : 'none';
+    controls.maxPolarAngle = m === 'surface' ? Math.PI * 0.49 : Math.PI * 0.62;
+    fitHome();
+    const to = m === 'surface' ? homeS : homeC, tg = m === 'surface' ? new THREE.Vector3(0, 0, 0) : tgtC;
+    if (animate) { gsap.to(camera.position, { x: to.x, y: to.y, z: to.z, duration: 1.1, ease: 'power3.inOut' }); gsap.to(controls.target, { x: tg.x, y: tg.y, z: tg.z, duration: 1.1, ease: 'power3.inOut' }); }
+    else { camera.position.copy(to); controls.target.copy(tg); }
+    apply();
+  };
+  q('.v3-mode').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { interacted = true; controls.autoRotate = false; setMode((b as HTMLElement).dataset.m as 'surface' | 'cut'); }));
+  q('[data-a="reset"]').addEventListener('click', () => { tl = 0; peelV = 0; exV = 0; peel.value = '0'; ex.value = '0'; hold = 0; setPlay(true); apply(); setMode(mode); });
+
+  controls.addEventListener('start', () => { interacted = true; controls.autoRotate = false; });
   const size = () => {
-    const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
-    renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 1 ? 44 : 34; camera.updateProjectionMatrix(); dirty = true; fitHome();
+    const w = stageEl.clientWidth, h = stageEl.clientHeight; if (!w || !h) return;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 1 ? 44 : 34; camera.updateProjectionMatrix(); fitHome();
   };
-  const ro = new ResizeObserver(size); ro.observe(host); size(); camera.position.copy(home).multiplyScalar(1.7);
-  controls.addEventListener('change', () => (dirty = true));
-  controls.autoRotate = false;
+  const ro = new ResizeObserver(size); ro.observe(stageEl); size();
+  camera.position.copy(homeS).multiplyScalar(1.7);
+  controls.autoRotate = true; controls.autoRotateSpeed = 0.7;
   let last = performance.now();
   const v = new THREE.Vector3();
   const place = (m: (typeof meas)[number]) => {
     v.copy(m.a).add(m.b).multiplyScalar(0.5); sheet.localToWorld(v); v.project(camera);
-    const x = (v.x * 0.5 + 0.5) * host.clientWidth, y = (-v.y * 0.5 + 0.5) * host.clientHeight;
-    m.label.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+    m.label.style.transform = `translate(${(v.x * 0.5 + 0.5) * stageEl.clientWidth}px, ${(-v.y * 0.5 + 0.5) * stageEl.clientHeight}px) translate(-50%, -50%)`;
   };
   const frame = (now: number) => {
     if (!alive) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (host.offsetParent !== null) {
-      if (playing) { tl = Math.min(1, tl + dt / 11); if (tl >= 1) { playing = false; playBtn.classList.remove('on'); } apply(); }
+    if (stageEl.offsetParent !== null) {
+      if (playing) {
+        if (tl < 1) { tl = Math.min(1, tl + dt / 16); apply(); if (tl >= 1) hold = 2.4; }
+        else { hold -= dt; if (hold <= 0 && !interacted) { tl = 0; apply(); } else if (hold <= 0) setPlay(false); }
+      }
       controls.update();
-      if (dirty || playing) { meas.forEach(place); renderer.render(scene, camera); dirty = false; }
+      if (mode === 'surface') meas.forEach(place);
+      renderer.render(scene, camera);
     }
     requestAnimationFrame(frame);
   };
-  apply();
+  setMode('surface', false);
+  camera.position.copy(homeS).multiplyScalar(1.7);
   requestAnimationFrame(frame);
-  // intro: the camera glides in, then the operation plays once
-  gsap.to(camera.position, { x: home.x, y: home.y, z: home.z, duration: 2.2, ease: 'power3.out', onUpdate: () => (dirty = true), onComplete: () => { playing = true; playBtn.classList.add('on'); } });
+  gsap.to(camera.position, { x: homeS.x, y: homeS.y, z: homeS.z, duration: 2.2, ease: 'power3.out' });
 
   return {
     refresh: () => apply(),
     destroy: () => {
-      alive = false; ro.disconnect(); controls.dispose(); gsap.killTweensOf(camera.position);
+      alive = false; ro.disconnect(); controls.dispose(); gsap.killTweensOf(camera.position); gsap.killTweensOf(controls.target); cut.dispose();
       scene.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); const mt = m.material as THREE.Material | THREE.Material[] | undefined; (Array.isArray(mt) ? mt : mt ? [mt] : []).forEach((x) => x.dispose()); });
       renderer.dispose(); host.innerHTML = '';
     },

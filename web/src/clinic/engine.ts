@@ -10,7 +10,11 @@ export interface Overrides { type?: TypeId; region?: RegionId; tech?: Tech; heig
 export interface Section { id: string; title: L2; tone?: 'alert' | 'plan'; items: L2[] }
 export interface Setting { level: 'ed' | 'clinic' | 'refer'; label: L2; why: L2[] }
 
+export interface DepthEst { mm: number; loMm: number; hiMm: number; layer: 'dermis' | 'subcutis' | 'deep'; skinMm: number; fatMm: number }
+export interface Dx { name: L2; grade: L2; one: L2 }
+
 export interface Case {
+  depthEst: DepthEst; dx: Dx;
   type: TypeId; typeConfidence: number; typeAuto: boolean; typeAlternatives: { id: TypeId; p: number }[];
   region: RegionId; regionAuto: boolean;
   geo: Geo; zone: string; areaCm2: number; tissue: Analysis['tissue']; depthClass: string;
@@ -55,6 +59,28 @@ export function buildCase(a: Analysis,
 
   const wMm = geo.shape.rectShort * cmPerPx * 10;
   const aspect = geo.shape.rectLong / Math.max(geo.shape.rectShort, 1e-6);
+  // depth: not measurable from a flat photo, so this is an estimate from appearance, size, type and site (shown with its range)
+  const skinMm = ({ face: 1.5, scalp: 4, hand: 1.5, foot: 4, heel: 5, sacrum: 3, trunk: 3, lowerleg: 2.5, limb: 2.5, joint: 2 } as Record<string, number>)[region] ?? 3;
+  const fatMm = ({ face: 4, scalp: 4, hand: 4, foot: 12, heel: 10, sacrum: 15, trunk: 18, lowerleg: 8, limb: 12, joint: 6 } as Record<string, number>)[region] ?? 10;
+  const minorMm = Math.max(4, wMm);
+  let dMid = a.depth_class === 'partial' ? Math.min(skinMm * 0.8, 0.8 + 0.05 * minorMm)
+    : a.depth_class === 'full_granulating' ? Math.min(25, 2.5 + 0.1 * minorMm)
+    : a.depth_class === 'full_devitalised' ? Math.min(30, 3.5 + 0.13 * minorMm) : Math.min(12, 2 + 0.07 * minorMm);
+  dMid *= type === 'pressure' ? 1.3 : type === 'venous' ? 0.6 : type === 'trauma' ? 0.8 : 1;
+  const depthEst: DepthEst = { mm: Math.round(dMid * 10) / 10, loMm: Math.round(dMid * 0.55 * 10) / 10, hiMm: Math.round(dMid * 1.6 * 10) / 10, skinMm, fatMm,
+    layer: dMid <= skinMm ? 'dermis' : dMid <= skinMm + fatMm ? 'subcutis' : 'deep' };
+  const covered = t.slough + t.necrosis;
+  const site = REGIONS[region].name;
+  const grade: L2 = type === 'pressure'
+    ? (depthEst.layer === 'dermis' ? L('Stage 2 (partial thickness)', 'Stadium 2 (ketebalan parsial)') : covered >= 60 ? L('Unstageable until debrided (base covered by slough or eschar)', 'Tidak dapat distadiumkan sebelum debridemen (dasar tertutup slough atau eskar)') : depthEst.layer === 'subcutis' ? L('Stage 3 (full thickness, fat visible)', 'Stadium 3 (ketebalan penuh, lemak terlihat)') : L('Stage 4 likely (muscle, tendon or bone may be exposed)', 'Kemungkinan stadium 4 (otot, tendon, atau tulang bisa terpapar)'))
+    : type === 'diabetic'
+    ? (depthEst.layer === 'dermis' ? L('Wagner grade 1 (superficial)', 'Wagner derajat 1 (superfisial)') : L('Wagner grade 2 or higher (deep; probe to bone and image to grade it)', 'Wagner derajat 2 atau lebih (dalam; probe-to-bone dan pencitraan untuk menentukan derajat)'))
+    : type === 'venous' ? L('CEAP C6 (active ulcer)', 'CEAP C6 (ulkus aktif)')
+    : type === 'surgical' ? (depthEst.layer === 'dermis' ? L('superficial incisional', 'insisional superfisial') : L('deep incisional (to fascia)', 'insisional dalam (hingga fasia)'))
+    : type === 'trauma' ? (depthEst.layer === 'dermis' ? L('partial thickness', 'ketebalan parsial') : L('full thickness', 'ketebalan penuh'))
+    : L('grade cannot be assigned from the picture', 'derajat tidak dapat ditentukan dari gambar');
+  const dxName: L2 = { en: `${TYPES[type].name.en}, ${site.en.toLowerCase()}`, id: `${TYPES[type].name.id}, ${site.id.toLowerCase()}` };
+  const dx: Dx = { name: dxName, grade, one: L(`${(areaCm2 > 0 ? (geo.shape.rectLong * cmPerPx).toFixed(1) : '0')} × ${(wMm / 10).toFixed(1)} cm, about ${(depthEst.mm / 10).toFixed(1)} cm deep`, `${(geo.shape.rectLong * cmPerPx).toFixed(1)} × ${(wMm / 10).toFixed(1)} cm, kedalaman sekitar ${(depthEst.mm / 10).toFixed(1)} cm`) };
   const depth = a.depth_class === 'partial' ? 'partial' : 'full';
   const dctx = { areaCm2, region: REGION_MAP[region], zone, depth, exposed: [] as string[], bedReady, infected, dm: type === 'diabetic', pad: false, bsa: o.heightCm && o.weightKg ? bsaMosteller(o.heightCm, o.weightKg) : 1.8, age: o.age ?? null };
   const onk = malignancy.flagged && type === 'other';
@@ -117,5 +143,5 @@ export function buildCase(a: Analysis,
     : a.scale.source === 'user_reference' ? L('Scale from the reference you marked.', 'Skala dari acuan yang Anda tandai.')
     : a.scale.source === 'user_distance' ? L('Scale from the camera distance you entered.', 'Skala dari jarak kamera yang Anda masukkan.')
     : L('Scale estimated: camera optics and an assumed distance of 30 cm.', 'Skala diperkirakan: optik kamera dan asumsi jarak 30 cm.');
-  return { type, typeConfidence: probs[type] ?? 0, typeAuto, typeAlternatives: alts.slice(0, 4), region, regionAuto: !o.region, geo, zone, areaCm2, tissue: t, depthClass: a.depth_class, decision, plan, techAuto, autoWhy, later: later && { decision: later.decision, plan: later.plan, donors: later.donors, autoWhy: later.autoWhy }, donors, setting, malignancy, sections, scaleNote, tbsaPct: tbsa, bsaM2: bsa };
+  return { depthEst, dx, type, typeConfidence: probs[type] ?? 0, typeAuto, typeAlternatives: alts.slice(0, 4), region, regionAuto: !o.region, geo, zone, areaCm2, tissue: t, depthClass: a.depth_class, decision, plan, techAuto, autoWhy, later: later && { decision: later.decision, plan: later.plan, donors: later.donors, autoWhy: later.autoWhy }, donors, setting, malignancy, sections, scaleNote, tbsaPct: tbsa, bsaM2: bsa };
 }
