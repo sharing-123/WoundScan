@@ -1,0 +1,11 @@
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy app:7860 {
+		transport http {
+			response_header_timeout 120s
+		}
+	}
+}
