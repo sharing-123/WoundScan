@@ -23,7 +23,7 @@ fi
 
 echo ">> opening ports 80 and 443 in the VM firewall (the Oracle network rules must allow them too)"
 for p in 80 443; do
-  sudo iptables -C INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null || sudo iptables -I INPUT 5 -p tcp --dport "$p" -j ACCEPT
+  sudo iptables -C INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null || sudo iptables -I INPUT -p tcp --dport "$p" -j ACCEPT
 done
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq netfilter-persistent iptables-persistent >/dev/null 2>&1 || true
 sudo netfilter-persistent save >/dev/null 2>&1 || true
