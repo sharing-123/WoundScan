@@ -8,7 +8,7 @@
 FROM node:22-slim AS web
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci --no-audit --no-fund --fetch-retries=6 --fetch-timeout=120000
 COPY web/ ./
 RUN npm run build
 
@@ -17,7 +17,7 @@ ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PORT=7860 WOUNDSCAN_DB=/data/woundscan
 RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY server/requirements.txt server/requirements.txt
-RUN pip install -r server/requirements.txt
+RUN pip install --default-timeout=180 --retries 10 -r server/requirements.txt
 COPY server/app server/app
 COPY server/run.py server/run.py
 COPY src/woundscan src/woundscan
