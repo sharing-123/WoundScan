@@ -15,6 +15,12 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 DOCKER="docker"; docker info >/dev/null 2>&1 || DOCKER="sudo docker"
 
+if [ "$(swapon --show --noheadings | wc -l)" -eq 0 ]; then
+  echo ">> adding 2 GB swap (a safety net while the image builds)"
+  sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile >/dev/null && sudo swapon /swapfile
+  grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+fi
+
 echo ">> opening ports 80 and 443 in the VM firewall (the Oracle network rules must allow them too)"
 for p in 80 443; do
   sudo iptables -C INPUT -p tcp --dport "$p" -j ACCEPT 2>/dev/null || sudo iptables -I INPUT 5 -p tcp --dport "$p" -j ACCEPT
