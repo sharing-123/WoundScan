@@ -156,6 +156,8 @@ story.querySelectorAll<HTMLElement>('.chapter').forEach((ch) => {
   });
 });
 
+import('./ui/fx').then((m) => m.mountFx({ lenis, story, reduce })).catch(() => {});
+
 // scroll cue disappears once you move
 const cue = document.getElementById('cue');
 lenis.on('scroll', ({ scroll }: { scroll: number }) => cue?.classList.toggle('gone', scroll > 60));

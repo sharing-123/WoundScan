@@ -387,3 +387,21 @@ body:not(.ready) .cue {
     font-size: 1rem;
   }
 }
+
+/* ---------- quiet extras: ghost numerals, HUD, sweep line, reticle ---------- */
+.chapter { position: relative; }
+.ghost { position: absolute; top: 12%; font: 300 clamp(9rem, 24vw, 22rem)/0.8 var(--font); letter-spacing: -0.06em; color: transparent; -webkit-text-stroke: 1px rgba(242, 182, 50, 0.1); pointer-events: none; user-select: none; z-index: 0; }
+.ch-right .ghost { left: 3vw; } .ch-left .ghost { right: 3vw; }
+.chapter .copy { position: relative; z-index: 1; will-change: transform; }
+.hud { position: fixed; left: clamp(1rem, 2.4vw, 2.2rem); bottom: clamp(1rem, 3vh, 2rem); z-index: 20; display: flex; align-items: center; gap: 0.7rem; font: 500 0.7rem var(--mono); letter-spacing: 0.14em; color: var(--tape); opacity: 0; transform: translateY(6px); transition: opacity 400ms, transform 400ms; pointer-events: none; mix-blend-mode: normal; }
+.hud.on { opacity: 0.85; transform: none; }
+.hud i { width: 2.2rem; height: 1px; background: currentColor; opacity: 0.6; }
+.hud-t { min-width: 9ch; color: var(--on-night); }
+body[data-tone='bone'] .hud, body:not(.ready) .hud { opacity: 0 !important; }
+.sweep { position: fixed; inset: 0; z-index: 15; pointer-events: none; opacity: 0; background: linear-gradient(180deg, transparent 49.7%, rgba(242, 182, 50, 0.55) 50%, transparent 50.3%); }
+.reticle { position: fixed; left: 0; top: 0; z-index: 9999; width: 26px; height: 26px; border: 1px solid rgba(242, 182, 50, 0.85); border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity 250ms, width 220ms, height 220ms, background-color 220ms; mix-blend-mode: difference; }
+.reticle::before, .reticle::after { content: ''; position: absolute; background: rgba(242, 182, 50, 0.9); }
+.reticle::before { left: 50%; top: -5px; width: 1px; height: 6px; } .reticle::after { top: 50%; left: -5px; height: 1px; width: 6px; }
+.reticle.seen { opacity: 1; } .reticle.hot { width: 46px; height: 46px; background: rgba(242, 182, 50, 0.12); }
+@media (max-width: 960px) { .hud, .ghost { display: none; } }
+@media (prefers-reduced-motion: reduce) { .sweep, .reticle { display: none; } }
