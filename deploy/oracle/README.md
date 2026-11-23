@@ -1,4 +1,6 @@
-# WoundScan on Oracle Cloud Always Free (24 hours a day, no monthly fee)
+# WoundScan on one small always-on server (Oracle Always Free, Akamai Cloud/Linode, or any Ubuntu VPS)
+
+This was deployed for real on an Akamai Cloud Linode 2 GB (Jakarta, Ubuntu 24.04, about 14 USD per month). The same steps work on any Ubuntu server with ports 22, 80 and 443 open: create the server, put your SSH key on it, run `setup.sh`, upload the models, run `setup.sh` again. Oracle Always Free (below) is the no-cost option if your card is accepted.
 
 The app (FastAPI, three ONNX models, the website) runs in Docker on a free ARM server. Caddy in front of it gets a real HTTPS certificate by itself and the address is `https://<server-ip-with-dashes>.sslip.io`, which stays the same as long as the server's public IP does. Cases are stored in your Neon PostgreSQL.
 
