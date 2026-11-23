@@ -75,6 +75,17 @@ The planning module works from the calibrated mask. For closure it solves, by bi
 
 ## Validation and limitations
 
+### Medetec results (160 images from 38 photographs)
+
+Five-fold cross-validation grouped by photograph, so images of the same wound never sit in both training and test folds. These are cross-validation results, not an independent external test.
+
+| Medetec (160 images, 38 photographs) | Dice | Accuracy | Precision | Recall | F1 |
+|---|---|---|---|---|---|
+| Zero-shot | 0.818 | 0.968 | 0.931 | 0.738 | 0.823 |
+| After adaptation | 0.892 (95% CI 0.866 to 0.917) | 0.981 | 0.914 | 0.896 | 0.905 |
+
+Adaptation raised recall from 0.738 to 0.896 and Dice from 0.818 to 0.892, while precision stayed near 0.91 to 0.93. The adapted ResNet34 model (`models/wound_seg_medetec_adapted_320.onnx`) is the default in the website and the API.
+
 On the 200 foot ulcer validation images the final model reached a Dice coefficient of 0.827 and an intersection over union of 0.744, with a median relative area error of 11.5 percent. The first round alone gave 0.803. Because these images also chose the best epoch, the figures are somewhat optimistic. On 160 Medetec images that the model had never seen, the Dice coefficient was 0.793 and the median area error was 23.9 percent. The geometry code was checked against shapes with known formulas. Areas agreed within 0.07 percent, perimeters of smooth shapes within 0.2 percent, and the perimeter of a rectangle with sharp corners within 0.93 percent. An automated stress test built 484 surgical plans, 30 planning sheets, and 146 random clinical combinations without a failure.
 
 We also tested three ideas that seemed likely to help and did not. Running the network again on a crop around the first detection lowered the Dice coefficient from 0.859 to 0.794 on 95 validation images. Refining the mask with MobileSAM and a box prompt was accepted by our consistency rule for only 4 of the 95 images and did not improve the score. Averaging predictions at 256, 320, and 384 pixels changed the Dice coefficient from 0.8606 to 0.8616, which does not justify the extra computation, and an input of 512 pixels failed at 0.668 because it lies far from the training scale.
