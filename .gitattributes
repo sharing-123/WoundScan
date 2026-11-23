@@ -7,3 +7,8 @@ Dockerfile text eol=lf
 .dockerignore text eol=lf
 deploy/oracle/* text eol=lf
 *.yml text eol=lf
+
+# One line-ending convention everywhere, so any checkout builds byte-identical images
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
