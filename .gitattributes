@@ -1,3 +1,9 @@
 app/lib/** -text
 *.onnx binary
 *.wasm binary
+# Linux servers and Docker need Unix line endings
+*.sh text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+deploy/oracle/* text eol=lf
+*.yml text eol=lf
